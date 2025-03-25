@@ -206,9 +206,14 @@ class Point(Pnt):
 class PntList:
     """ class for point list (dictionary) """
 
-    def __init__(self):
-        """ initialize new point list """
-        self.__pnt_list = {}
+    def __init__(self, p_dic:Union[dict, None]=None):
+        """ initialize new point list
+            :param p_dic: dictionary to initialize PntList
+        """
+        if p_dic is None:
+            self.__pnt_list = {}
+        else:
+            self.__pnt_list = p_dic.copy()
         self.__list_source = None
         self.__changed = False
 
@@ -260,11 +265,14 @@ class PntList:
             :param: coo_path path to file to load
             :param: append_coo keep old points in list
         """
+        # TODO it is implemented in readers
+        self.__list_source = coo_path
         pass
 
     def save_coo(self):
         """ Save coordinate list to source """
         if self.__changed:
+            # TODO it is implementes in writers
             pass
 
 if __name__ == "__main__":
