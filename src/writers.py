@@ -5,8 +5,8 @@
    :platform: Unix, Windows
    :synopsis: PyGeoEZ - an open source project for surveying calculations
            publish observation results.
-           GPL v2.0 license
-           Copyright (C) 2024- Zoltan Siki <siki1958@gmail.com>
+           GPL v3.0 license
+           Copyright (C) 2025- Zoltan Siki <siki1958@gmail.com>
 
 .. moduleauthor:: Zoltan Siki <siki1958@gmail.com>
 """
@@ -16,7 +16,7 @@ import datetime
 from angle import Angle
 from readers import codes
 
-# PyGE keys tp GeoEasy codes
+# PyGEZ keys to GeoEasy 3 codes
 inv_codes = dict(zip(codes.values(), codes.keys()))
 
 class Writer():

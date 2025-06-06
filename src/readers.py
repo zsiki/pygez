@@ -2,8 +2,8 @@
 .. module:: readers.py
    :platform: Unix, Windows
    :synopsis: PyGeoEZ - an open source project for surveying calculations
-       GPL v2.0 license Copyright (C)
-       2024- Zoltan Siki <siki1958@gmail.com>
+       GPL v3.0 license Copyright (C)
+       2025- Zoltan Siki <siki1958@gmail.com>
 
 .. moduleauthor:: Zoltan Siki <siki1958@gmail.com>
 """
@@ -447,6 +447,42 @@ class GsiReader(FileReader):
         if len(act_targets) > 0:
             res.append([st, act_targets])
         return res
+
+class TrimbleM5(FileReader):
+    """ Load observations from Trimble M5 file """
+    def __init__(self, path: str, encoding:str="UTF-8"):
+        """ initialize class
+    
+            :param path: path to geo file
+            :param encoding: file encoding
+        """
+        super().__init__(path, encoding)
+        self.p_index = 15   # point number position in 2nd value block
+        self._c_index = 10  # code position in 2nd value block
+        self. i_index = 0   # info position in 2nd value block
+
+    def get_next(self) -> tuple:
+        """ get a line and return a dict """
+        act_line = self._get_line()
+        res = {}
+        if not re.match(r'For[ _]M5', act_line)
+            return res  # invalid line
+        block_type = act_line[17:19]
+        ih = 0  # default
+        th = 0
+        if block_type == "PI":  # point identification
+            res["id"] = act_line[21+self.p_index:33+self.p_index].strip()
+            code = act_line[21+self.c_index:26+self.c_index].strip()
+            if len(code):
+                res["code"] = code
+            #info = act_line[21+self.i_index:28+self.i_index].strip()
+        elif block_type == "TI":    # text information
+            info = act_line[21+self.i_index:28+self.i_index].strip()
+            if re.match(r'[KU]N STATS', act_line):
+                pass
+            
+        for i in range(49, 96, 23):
+            pass
 
 if __name__ == "__main__":
     cr = GsiReader('../src/tsdata/leica/network.GSI')

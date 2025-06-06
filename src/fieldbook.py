@@ -3,8 +3,8 @@
 .. module:: fieldbook.py
    :platform: Unix, Windows
    :synopsis: PyGeoEZ - an open source project for surveying calculations
-       GPL v2.0 license Copyright (C)
-       2024- Zoltan Siki <siki1958@gmail.com>
+       GPL v3.0 license Copyright (C)
+       2025- Zoltan Siki <siki1958@gmail.com>
 
 .. moduleauthor:: Zoltan Siki <siki1958@gmail.com>
 """
