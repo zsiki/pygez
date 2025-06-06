@@ -3,14 +3,15 @@
 .. module:: point.py
    :platform: Unix, Windows
    :synopsis: PyGeoEZ - an open source project for surveying calculations
-       GPL v2.0 license Copyright (C)
-       2024- Zoltan Siki <siki1958@gmail.com>
+       GPL v3.0 license Copyright (C)
+       2025- Zoltan Siki <siki1958@gmail.com>
 
 .. moduleauthor:: Zoltan Siki <siki1958@gmail.com>
 """
 
 from math import atan2, hypot
 from typing import Union
+import numpy as np
 
 class Pnt:
     """ Base point object without ID
@@ -272,8 +273,28 @@ class PntList:
     def save_coo(self):
         """ Save coordinate list to source """
         if self.__changed:
-            # TODO it is implementes in writers
+            # TODO it is implemented in writers
             pass
+
+    def save_as(self, target: str):
+        """ Save coordinates to other format """
+        # TODO use writer classes
+        pass
+
+    def to_array(self, dimension: int) -> np.ndarray:
+        """ Convert point list to a numpy array, easting, northing and elev only
+            :param dimension: 2/3
+            :returns array of coordinates (2D or 3D)
+        """
+        # TODO filter on points
+        res = []
+        for point_id, data in self.__list.items():
+            if 'east' in data and 'north' in data:
+                if dimension == 2:
+                    res.append([data["east"], data["north"]])
+                elif dimension == 3 and "elev" in data:
+                    res.append([data["east"], data["north"], data["elev"]])
+        return np.array(res)
 
 if __name__ == "__main__":
 
