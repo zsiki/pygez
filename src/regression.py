@@ -9,8 +9,14 @@
 .. moduleauthor:: Zoltan Siki <siki1958@gmail.com>
 """
 
-from math import sqrt
+# TODO move RMS to the BaseReg class
+
+from math import sqrt, sin, cos, acos, hypot, atan2
 import numpy as np
+
+def sign(x):
+    """ signum function """
+    return  1 if x > 0 else -1 if x < 0 else 0
 
 class BaseReg:
     """ Base class for regressions
@@ -51,7 +57,7 @@ class LinearReg(BaseReg):
             inds: point idices to use
         """
         if inds is None:
-            pnts_act = self._pnts
+            pnts_act = self._pnts.copy()
         else:
             pnts_act = self._pnts[inds]
         # move origin to weight point (pure term = 0)
@@ -92,7 +98,7 @@ class CircleReg(BaseReg):
         """ Calculate best fitting circle parameters
         """
         if inds is None:
-            pnts_act = self._pnts
+            pnts_act = self._pnts.copy()
         else:
             pnts_act = self._pnts[inds]
         pnts_mean = np.mean(pnts_act, axis=0)   # weight point
@@ -113,7 +119,7 @@ class CircleReg(BaseReg):
         self._params = np.array([east_0, north_0, r])
         return self._params
 
-    def dist(self):
+    def dist(self) ->np.ndarray:
         """Calculate distance from circle """
         return np.sqrt((self._pnts[:,0] - self._params[0])**2 +
                        (self._pnts[:,1] - self._params[1])**2) - self._params[2]
@@ -139,7 +145,7 @@ class SphereReg(BaseReg):
             :returns: x0, y0, z0, R as a numpy array
         """
         if inds is None:
-            pnts_act = self._pnts
+            pnts_act = self._pnts.copy()
         else:
             pnts_act = self._pnts[inds]
         pnts_mean = np.mean(pnts_act, axis=0)   # weight point
@@ -154,7 +160,7 @@ class SphereReg(BaseReg):
               sqrt((res[0]**2 + res[1]**2 + res[2]**2) / 4 - res[3])])
         return self._params
 
-    def dist(self):
+    def dist(self) ->np.ndarray:
         """Calculate distance from sphere """
         return np.sqrt((self._pnts[:,0] - self._params[0])**2 +
                        (self._pnts[:,1] - self._params[1])**2 +
@@ -169,6 +175,113 @@ class SphereReg(BaseReg):
         """ return minimal number of points to define geometry """
         return 4
 
+class EllipseReg(BaseReg):
+    """ class for ellipse regression
+        :param pnts: array of coordinates (n,2)
+    """
+    def __init__(self, pnts:np.ndarray):
+        """ """
+        super().__init__(pnts)
+
+    @staticmethod
+    def par2geom(A, B, C, D, E, F):
+        """ calculate geometrical parameters from A B C D E F"""
+        ap = abs(-sqrt(abs(2 * (A * E**2 + C * D**2 - B * D * E  + (B**2 - 4 * A * C) * F) * ((A + C) + sqrt((A - C)**2 + B**2)))) / (B**2 - 4 * A * C))
+        bp = abs(-sqrt(abs(2 * (A * E**2 + C * D**2 - B * D * E  + (B**2 - 4 * A * C) * F) * ((A + C) - sqrt((A - C)**2 + B**2)))) / (B**2 - 4 * A * C))
+        x0 = (2 * C * D - B * E) / (B**2 - 4 * A * C)
+        y0 = (2 * A * E - B * D) / (B**2 - 4 * A * C)
+        phi = atan2(-B, C-A) / 2
+        if ap < bp:
+            ap, bp = bp, ap
+            phi -= np.pi / 2
+        while phi < 0:
+            phi += 2 * np.pi
+        while phi > np.pi:
+            phi -= np.pi
+        return np.array([x0, y0, ap, bp, phi])
+
+    def lkn_reg(self, inds=None) ->np.ndarray:
+        """ Calculate best fitting ellipse parameters
+            Ax^2 + Bxy + Cy^2 + Dx + Ey + F = 0
+            :params inds: index array to filter points
+        """
+        if inds is None:
+            pnts_act = self._pnts.copy()
+        else:
+            pnts_act = self._pnts[inds]
+        x = pnts_act[:,0]
+        y = pnts_act[:,1]
+        mat = np.c_[x**2, x*y, y**2, x, y, np.ones_like(x)]
+        S = mat.T @ mat
+        eigvals, eigvecs = np.linalg.eig(S)
+        eigvals_sorted_idx = np.argsort(eigvals)
+        eigvals = eigvals[eigvals_sorted_idx]
+        eigvecs = eigvecs[:, eigvals_sorted_idx]
+        A, B, C, D, E, F = eigvecs[:, 0]
+        # calculating ellipse geometric parameters
+        self._params = self.par2geom(A, B, C, D, E, F)
+        return self._params
+
+    def pnt_ell_dist(self, pnt: np.ndarray) ->float:
+        """ Calculate point ellipse distance from standard ellipse
+            (center at origin main axis horizontal)
+        """
+        xp = abs(pnt[0])
+        yp = abs(pnt[1])
+        a = self._params[2]
+        b = self._params[3]
+        if xp > yp:
+            a, b = b, a
+            xp, yp = yp, xp
+        l = b * b - a * a
+        m = a * xp / l
+        m2 = m * m
+        n = b * yp / l
+        n2 = n * n
+        c = (m2 + n2 - 1.0) / 3.0
+        c3 = c**3
+        q = c3 + m2 * n2 * 2.0
+        d = c3 + m2 * n2
+        g = m + m * n2
+        if d < 0.0:
+            p = acos(q / c3) / 3.0
+            s = cos(p)
+            t = sin(p) * sqrt(3.0)
+            rx = sqrt(-c * (s + t + 2.0) + m2)
+            ry = sqrt(-c * (s - t + 2.0) + m2)
+            co = (ry + sign(l) * rx + abs(g) / (rx * ry) - m) / 2.0
+        else:
+            h = 2.0 * m * n * sqrt(d)
+            s = sign(q + h) * abs(q + h)**(1.0 / 3.0)
+            u = sign(q - h) * abs(q - h)**(1.0 / 3.0)
+            rx = -s - u - c * 4.0 + 2.0 * m2
+            ry = (s - u) * sqrt(3.0)
+            rm = sqrt(rx * rx + ry * ry)
+            p = ry / sqrt(rm -rx)
+            co = (p + 2.0 * g / rm - m) / 2.0
+        si = sqrt(abs(1.0 - co * co))
+        xe, ye = a * co, b * si
+        return hypot(xe - xp, ye - yp)
+
+    def dist(self) ->np.ndarray:
+        """ distance from points to ellipse """
+        phi = self._params[4]           # rotational angle
+        rot = np.array([[cos(phi), -sin(phi)],
+                        [sin(phi), cos(phi)]])
+        # move to origin and rotate to horizontal
+        loc_pnts = (self._pnts - self._params[:2]) @ rot
+        distances = [self.pnt_ell_dist(loc_pnt) for loc_pnt in loc_pnts]
+        return np.array(distances)
+
+    def RMS(self) ->float:
+        """ Calculate mean square error
+        """
+        return sqrt(np.sum(self.dist()**2) / self._pnts.shape[0])
+
+    def min_n(self) ->int:
+        """ return minimal number of points to define geometry """
+        return 5
+
 if __name__ == "__main__":
     east = np.array([1, 5, 3])
     north = np.array([-3, 7, 9])
@@ -179,3 +292,13 @@ if __name__ == "__main__":
     cc = CircleReg(np.c_[east, north])
     print(cc.lkn_reg())
     print(f"RMS: {cc.RMS()}")
+    # ellipse
+    pnts = np.array(
+            [[8.950, 1.450],
+             [7.761, 1.885],
+             [6.000, 1.500],
+             [3.934, 0.354],
+             [1.879, -1.379]])
+    ee = EllipseReg(pnts)
+    print(ee.lkn_reg())
+    print(f"RMS: {ee.RMS()}")

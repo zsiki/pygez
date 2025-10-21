@@ -1,10 +1,10 @@
 from ransac import Ransac
-from regression import LinearReg, CircleReg, SphereReg
+from regression import LinearReg, CircleReg, SphereReg, EllipseReg
 import numpy as np
 from matplotlib import pyplot as plt
 
 max_coo = 1000  # coordinate range [0..max_coo]
-n_p = 200       # number of points
+n_p =  100       # number of points
 # test for line
 param_0 = np.array([-0.15432, 0.98802, 46.234])
 east = np.random.rand(n_p) * max_coo    # generate random coords
@@ -68,7 +68,7 @@ beta =  np.random.rand(n_p) * np.pi * 2
 east = param_0[3] * np.cos(beta) * np.sin(alpha) + param_0[0]  # generate random coords
 north = param_0[3] * np.cos(beta) * np.cos(alpha) + param_0[1]
 elev = param_0[3] * np.sin(beta) + param_0[2]
-elev += np.random.rand(n_p)    # add random noise
+elev += np.random.rand(n_p) / 9    # add random noise
 enz = np.c_[east, north, elev]
 sr = SphereReg(enz)
 r = Ransac(sr, 0.3)
@@ -82,3 +82,24 @@ params = sr1.lkn_reg()
 print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f}")
 print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f}")
 print(f"RMS: {sr1.RMS():.3f}")
+# test for ellipse
+param_0 = np.array([4.0, -3.5, 7.0, 3.0, np.pi / 6])
+t = np.random.rand(n_p) * 2 * np.pi
+east = param_0[0] + param_0[2] * np.cos(t) * np.cos(param_0[4]) - \
+                    param_0[3] * np.sin(t) * np.sin(param_0[4])
+north = param_0[1] + param_0[2] * np.cos(t) * np.sin(param_0[4]) + \
+                     param_0[3] * np.sin(t) * np.cos(param_0[4])
+north += np.random.rand(n_p) / 9    # add random noise
+en = np.c_[east, north]
+er = EllipseReg(en)
+r = Ransac(er, 0.2)
+en_ellipse = r.ransac_filter()
+print("-" * 80)
+print("Ellipse")
+print(f"{en_ellipse.shape[0]} points fit")
+# calculate final params
+el1 = EllipseReg(en_ellipse)
+params = el1.lkn_reg()
+print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f}")
+print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f}")
+print(f"RMS: {el1.RMS():.3f}")
