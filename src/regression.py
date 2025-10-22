@@ -9,8 +9,6 @@
 .. moduleauthor:: Zoltan Siki <siki1958@gmail.com>
 """
 
-# TODO move RMS to the BaseReg class
-
 from math import sqrt, sin, cos, acos, hypot, atan2
 import numpy as np
 
@@ -42,6 +40,16 @@ class BaseReg:
     def set_pnts(self, pnts:np.ndarray):
         """ update coordinates """
         self._pnts = pnts
+
+    def dist():
+        """ dummy method it has to be implemented in inherited classes
+        """
+        return None
+
+    def RMS(self) ->float:
+        """ Calculate mean square error
+        """
+        return sqrt(np.sum(self.dist()**2) / self._pnts.shape[0])
 
 class LinearReg(BaseReg):
     """ class for linear regressions (line, plane)
@@ -76,11 +84,6 @@ class LinearReg(BaseReg):
         """ Calculate distance from the line or plane """
         n = self._pnts.shape[1]   # dimension
         return self._pnts.dot(self._params[:n]) + self._params[n]
-
-    def RMS(self) ->float:
-        """ Calculate mean square error
-        """
-        return sqrt(np.sum(self.dist()**2) / self._pnts.shape[0])
 
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
@@ -124,11 +127,6 @@ class CircleReg(BaseReg):
         return np.sqrt((self._pnts[:,0] - self._params[0])**2 +
                        (self._pnts[:,1] - self._params[1])**2) - self._params[2]
 
-    def RMS(self) ->float:
-        """ Calculate mean square error
-        """
-        return sqrt(np.sum(self.dist()**2) / self._pnts.shape[0])
-
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
         return 3
@@ -165,11 +163,6 @@ class SphereReg(BaseReg):
         return np.sqrt((self._pnts[:,0] - self._params[0])**2 +
                        (self._pnts[:,1] - self._params[1])**2 +
                        (self._pnts[:,2] - self._params[2])**2) - self._params[3]
-
-    def RMS(self) ->float:
-        """ Calculate mean square error
-        """
-        return sqrt(np.sum(self.dist()**2) / self._pnts.shape[0])
 
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
@@ -272,11 +265,6 @@ class EllipseReg(BaseReg):
         loc_pnts = (self._pnts - self._params[:2]) @ rot
         distances = [self.pnt_ell_dist(loc_pnt) for loc_pnt in loc_pnts]
         return np.array(distances)
-
-    def RMS(self) ->float:
-        """ Calculate mean square error
-        """
-        return sqrt(np.sum(self.dist()**2) / self._pnts.shape[0])
 
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
