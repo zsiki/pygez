@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2" time="15:49:09" date="2006-06-19" version="0" language="English" readOnly="false">
+<Units>
+<Metric linearUnit="meter" temperatureUnit="celsius" volumeUnit="cubicMeter" areaUnit="squareMeter" pressureUnit="milliBars" angularUnit="decimal dd.mm.ss" directionUnit="decimal dd.mm.ss">
+</Metric>
+</Units>
+<CgPoints>
+<CgPoint oID="2748159" state="existing" pntSurv="boundary" name="Q">312.04999999981374 274.33400000003166</CgPoint>
+<CgPoint oID="2748179" state="existing" pntSurv="boundary" name="W">308.8430000003427 277.0350000000326</CgPoint>
+<CgPoint oID="2746236" state="existing" pntSurv="boundary" name="M">306.9670000001788 19.508999999961816</CgPoint>
+</CgPoints>
+<Survey>
+<SurveyHeader name="IS185989" headOfPower="Survey and Mapping Infrastructure Act 2003" surveyFormat="Identification" surveyPurpose="Identification" desc="Plan of Identification Survey of Lots 26 &amp; 27 on RP726990 " type="surveyed" surveyStatus="Survey Records Only" fieldNoteFlag="false" submissionDate="2006-04-07" documentStatus="Captured">
+<CoordinateSystem horizontalDatum="Local" verticalDatum="Arbitrary" />
+</SurveyHeader>
+<InstrumentSetup id="IS-7-IS185989" stationName="7-IS185989" instrumentHeight="0">
+<InstrumentPoint pntRef="7-IS185989" />
+</InstrumentSetup>
+<InstrumentSetup id="IS-70-IS185989" stationName="70-IS185989" instrumentHeight="0">
+<InstrumentPoint pntRef="70-IS185989" />
+</InstrumentSetup>
+<ObservationGroup id="OG-1">
+<ReducedObservation name="3" setupID="IS-7-IS185989" targetSetupID="IS-70-IS185989" azimuth="302.504" horizDistance="10.81" distanceType="measured" azimuthType="measured" purpose="traverse" equipmentUsed="theodolite EDM" />
+<ReducedObservation name="6" setupID="IS-72-IS185989" targetSetupID="IS-73-IS185989" azimuth="110.274" horizDistance="37.55" distanceType="measured" azimuthType="measured" purpose="traverse" equipmentUsed="theodolite EDM" />
+<ReducedObservation name="4" setupID="IS-70-IS185989" targetSetupID="IS-71-IS185989" azimuth="359.512" horizDistance="52.12" distanceType="measured" azimuthType="measured" purpose="traverse" equipmentUsed="theodolite EDM" />
+<ReducedObservation name="5" setupID="IS-71-IS185989" targetSetupID="IS-72-IS185989" azimuth="359.512" horizDistance="24.574" distanceType="measured" azimuthType="measured" purpose="traverse" equipmentUsed="theodolite EDM" />
+</ObservationGroup>
+</Survey>
+<CoordinateSystem datum="OfPlan" desc="Vide IS185958" />
+</LandXML>
