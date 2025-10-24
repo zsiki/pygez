@@ -14,10 +14,10 @@
 import sys
 import datetime
 from angle import Angle
-from readers import codes
+from readers import CODES
 
 # PyGEZ keys to GeoEasy 3 codes
-inv_codes = dict(zip(codes.values(), codes.keys()))
+INV_CODES = dict(zip(CODES.values(), CODES.keys()))
 
 class Writer():
     """ Base class for different writers (virtual)
@@ -204,7 +204,7 @@ class CooWriter(FileWriter):
         cl = "}"
         for key, val in data.items():
             if self.filt is None or key in self.filt:
-                line += f"{op}{inv_codes[key]} {self.str_val(val)}{cl} "
+                line += f"{op}{INV_CODES[key]} {self.str_val(val)}{cl} "
         try:
             self.fp.write(line + "\n")
             self.fp.flush()
