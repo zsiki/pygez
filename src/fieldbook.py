@@ -28,7 +28,7 @@ class FieldBook:
     FB_ERROR = 4
 
     # jump table to reader based on extension
-    reader_table = {'.geo': GeoReader, '.dmp': DmpReader}
+    reader_table = {'.geo': GeoReader, '.dmp': DmpReader, '.gsi': GsiReader}
 
     def __init__(self, fb_type: int, source: Union[str, None]):
         """ initialize field book """
@@ -113,6 +113,7 @@ class FieldBook:
 
 
 if __name__ == "__main__":
-    fb = FieldBook(FieldBook.DIRECTIONS_FB, 'demodata/test1.geo')
+    fb = FieldBook(FieldBook.DIRECTIONS_FB, '../testdata/test.geo')
     fb.load()
-    print(fb.to_md())
+    if fb.state == 0:
+        print(fb.to_md())
