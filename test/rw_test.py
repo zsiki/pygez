@@ -1,16 +1,51 @@
+from os import path
 import readers
 import writers
 
+DATA_PATH = "../testdata"
+
 print('------------------------------- CooReader -----------------------------')
-cr = readers.CooReader('testdata/test.coo')
+cr = readers.CooReader(path.join(DATA_PATH, 'test.coo'))
+data = cr.load_data()
+print('------------------------------- CooWriter -----------------------------')
+cw = writers.CooWriter()    # write to stdout
+cw.write_all(data)
+print('------------------------------- CsvReader -----------------------------')
+cr = readers.CsvReader(path.join(DATA_PATH, 'test.csv'), header=False,
+                       field_names=['id', 'east', 'north', 'elev'])
 data = cr.load_data()
 print('------------------------------- CsvWriter -----------------------------')
 cw = writers.CsvWriter(filt=['id', 'east', 'north', 'elev'])    # write to stdout
 cw.write_all(data)
-print('------------------------------- CooWriter -----------------------------')
-cw = writers.CooWriter()    # write to stdout
-cw.write_all(data)
 print('------------------------------- GeoReader -----------------------------')
-cr = GeoReader('testdata/test.geo')
-cr.load_data()
-print('------------------------------- DmpWriter -----------------------------')
+cr = readers.GeoReader(path.join(DATA_PATH, 'test.geo'))
+data = cr.load_data()
+print(data)
+print('------------------------------- GsiCooReader --------------------------')
+cr = readers.GsiCooReader(path.join(DATA_PATH, "coords.gsi"), readers.GSI_COO_CODES)
+data = cr.load_data()
+print(data)
+print('------------------------------- GsiObsReader --------------------------')
+cr = readers.GsiObsReader(path.join(DATA_PATH, "test.gsi"), readers.GSI_OBS_CODES)
+data = cr.load_data()
+#print(data)
+print('------------------------------- M5CooReader ---------------------------')
+cr = readers.M5CooReader(path.join(DATA_PATH, "test.m5"))
+data = cr.load_data()
+cw.write_all(data)
+#print('------------------------------- M5ObsReader ---------------------------')
+#cr = readers.M5ObsReader(path.join(DATA_PATH, "test.m5"))
+#data = cr.load_data()
+#cw.write_all(data)
+print('------------------------------- SDRCooReader --------------------------')
+cr = readers.SdrCooReader(path.join(DATA_PATH, "test.sdr"))
+data = cr.load_data()
+cw.write_all(data)
+print('------------------------------- Rw5CooReader --------------------------')
+cr = readers.Rw5CooReader(path.join(DATA_PATH, "test.rw5"))
+data = cr.load_data()
+cw.write_all(data)
+print('------------------------------- LandXMLCooReader ----------------------')
+cr = readers.LandXmlCooReader(path.join(DATA_PATH, "test.xml"))
+data = cr.load_data()
+cw.write_all(data)
