@@ -634,13 +634,16 @@ class LandXmlCooReader(Reader):
 
     def load_data(self) ->dict:
         """ load all CgPoints from LandXML that have a point name """
-        tree = ET.parse(self._path)
+        # Dictionary to store CgPoints
+        points = {}
+
+        try:
+            tree = ET.parse(self._path)
+        except:
+            return points   # TODO error message
         root = tree.getroot()
         # Handle XML namespaces (LandXML uses one)
         ns = {'lx': root.tag.split('}')[0].strip('{')}
-
-        # Dictionary to store CgPoints
-        points = {}
 
         # Iterate over all CgPoint elements
         for point_elem in root.findall('.//lx:CgPoint', ns):
