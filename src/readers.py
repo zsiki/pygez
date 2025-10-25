@@ -653,8 +653,8 @@ class LandXmlCooReader(Reader):
                 text = point_elem.text.strip()
                 coords = [float(x) for x in text.split()]
                 if len(coords) == 2:
-                    points[name] = {'east': coords[0], 'north': coords[1]}
+                    points[name] = {'north': coords[0], 'east': coords[1]}
                 if len(coords) == 3:
-                    points[name] = {'east': coords[0], 'north': coords[1],
+                    points[name] = {'north': coords[0], 'east': coords[1],
                                     'elev': coords[2]}
         return points
