@@ -15,6 +15,13 @@ from datetime import datetime
 import xml.etree.ElementTree as ET
 from angle import Angle
 
+help_table   = {'.coo': "GeoEasy COO files",
+                '.gsi': "Leica GSI files",
+                '.m5' : "Trimble M5 files",
+                '.sdr': "Sokkia SDR files",
+                '.rw5': "Carlson SurvCE Raw format files (RW5)",
+                '.xml': "LandXml  files (XML)"}
+
 # GeoEasy codes to PyGEZ keys
 COO_CODES = {4: 'code', 5: 'id', 37: 'north', 38: 'east', 39: 'elev',
              51: 'datetime'}
@@ -349,7 +356,7 @@ class GsiCooReader(FileReader):
     """ coordinate reader class for Leica GSI format
         gsi_keys is a dictionary of valid GSI codes
     """
-    def __init__(self, path:str, gsi_keys: dict, encoding:str='UTF-8'):
+    def __init__(self, path:str, gsi_keys: dict=GSI_COO_CODES, encoding:str='UTF-8'):
         """ initialize
         """
         super().__init__(path, encoding)
@@ -658,3 +665,11 @@ class LandXmlCooReader(Reader):
                     points[name] = {'north': coords[0], 'east': coords[1],
                                     'elev': coords[2]}
         return points
+
+# jump table for readers by extension
+reader_table = {'.coo': CooReader,
+                '.gsi': GsiCooReader,
+                '.m5' : M5CooReader,
+                '.sdr': SdrCooReader,
+                '.rw5': Rw5CooReader,
+                '.xml': LandXmlCooReader}
