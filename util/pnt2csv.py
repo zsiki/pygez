@@ -23,25 +23,12 @@
 import os
 import sys
 import argparse
-import readers
-import writers
+#import readers
+from readers import reader_table, help_table
+from writers import CsvWriter
+from ts_file import guess_file_type
 
 if __name__ == '__main__':
-    # jump table for readers by extension
-    reader_table = {'.coo': readers.CooReader,
-                    '.gsi': readers.GsiCooReader,
-                    '.m5' : readers.M5CooReader,
-                    '.sdr': readers.SdrCooReader,
-                    '.rw5': readers.Rw5CooReader,
-                    '.xml': readers.LandXmlCooReader}
-
-    help_table   = {'.coo': "GeoEasy COO files",
-                    '.gsi': "Leica GSI files",
-                    '.m5' : "Trimble M5 files",
-                    '.sdr': "Sokkia SDR files",
-                    '.rw5': "Carlson SurvCE Raw format files (RW5)",
-                    '.xml': "LandXml  files (XML)"}
-
     # build epilog for help
     EPILOG = "Supported file formats:\n" + \
              "\n".join([f"{key} : {value}" for key, value in help_table.items()])
@@ -71,10 +58,17 @@ if __name__ == '__main__':
             print(f"Output file exists, use --ovr/--append to overwrite/append: {args.out}")
             sys.exit()
     MODE = "a" if args.append else "w"
-    # select reader by extension
-    root, extension = os.path.splitext(args.name[0])
-    extension = extension.lower()
+    # select reader by content
+    extension = guess_file_type(args.name[0])
+    if extension == "unknown":
+        # select reader by extension
+        root, extension = os.path.splitext(args.name[0])
+        extension = extension.lower()
+    reader = reader_table.get(extension, None)
+    if not reader:
+        print(f"Unknown file type: {args.name[0]}")
+        sys.exit()
     cr = reader_table[extension](args.name[0])
     data = cr.load_data()
-    cw = writers.CsvWriter(fname=args.out, sep=args.sep, mode=MODE)
+    cw = CsvWriter(fname=args.out, sep=args.sep, mode=MODE)
     cw.write_all(data)
