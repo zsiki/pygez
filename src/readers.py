@@ -20,7 +20,8 @@ help_table   = {'.coo': "GeoEasy COO files",
                 '.m5' : "Trimble M5 files",
                 '.sdr': "Sokkia SDR files",
                 '.rw5': "Carlson SurvCE Raw format files (RW5)",
-                '.xml': "LandXml  files (XML)"}
+                '.xml': "LandXml files (XML)",
+                '.gts7': 'Topcon GTS-7 files'}
 
 # GeoEasy codes to PyGEZ keys
 COO_CODES = {4: 'code', 5: 'id', 37: 'north', 38: 'east', 39: 'elev',
@@ -666,10 +667,45 @@ class LandXmlCooReader(Reader):
                                     'elev': coords[2]}
         return points
 
+class Gts7CooReader(FileReader):
+    """ load coordinates from Topcon GTS-7 file """
+
+    def __init__(self, path:str, encoding:str='UTF-8', separator:str=","):
+        """ initialize class
+        """
+        super().__init__(path, encoding)
+        self._separator = separator
+        self._dist_unit = 1  # meter
+        self.id = None
+        self.code = None
+
+    def get_next(self) -> dict:
+        """ get next point """
+        act_list = re.split(r'\W+', self._get_line().strip())
+        res = {}
+        if act_list[0] in ['STN', 'BKB',  'SS']:
+            # get point id
+            self.id = act_list[1]
+            if len(act_list) > 3:
+                self.code = act_list[3]
+            else:
+                self.code = None
+        elif act_list[0] in ['XYZ']:
+            res['id'] = self.id
+            res['east'] = float(act_list[1])
+            res['north'] = float(act_list[2])
+            if len(act_list) > 3:
+                res['elev'] = float(act_list[3])
+            if self.code is not None:
+                res['code'] = self.code
+                self.code = None
+        return res
+
 # jump table for readers by extension
 reader_table = {'.coo': CooReader,
                 '.gsi': GsiCooReader,
                 '.m5' : M5CooReader,
                 '.sdr': SdrCooReader,
                 '.rw5': Rw5CooReader,
-                '.xml': LandXmlCooReader}
+                '.xml': LandXmlCooReader,
+                '.gts7': Gts7CooReader}

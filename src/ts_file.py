@@ -72,6 +72,16 @@ def guess_file_type(fname: str) -> str:
             rw5_line += 1
     if rw5_line > 6:
         return ".rw5"
+    # Topcon GTS-7
+    GTS_TOKENS = ['JOB', 'DATE', 'NAME', 'INST', 'UNITS', 'SCALE', 'ATMOS',
+                  'STN', 'XYZ', 'BKB', 'BS', 'FS', 'SS', 'CTL', 'HV', 'SD',
+                  'HD', 'OFFSET', 'PLT_OFF', 'NOTE', 'MLM', 'RES_OBS']
+    gts_line = 0
+    for line in lines:
+        if re.split('\W+', line)[0] in GTS_TOKENS:
+            gts_line += 1
+    if gts_line > 6:
+        return '.gts7'
     return "unknown"   # unknown file
 
 if __name__ == "__main__":
