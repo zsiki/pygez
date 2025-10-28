@@ -1,5 +1,5 @@
 from ransac import Ransac
-from regression import LinearReg, CircleReg, SphereReg, EllipseReg
+from regression import LinearReg, CircleReg, SphereReg, EllipseReg, Line3dReg
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -103,3 +103,23 @@ params = el1.lkn_reg()
 print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f}")
 print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f}")
 print(f"RMS: {el1.RMS():.3f}")
+# 3D line
+param_0 = np.array([100, 200, 300, 0.4356, 0.3245, 0.8396])
+t = np.random.rand(n_p) * 100
+east = param_0[0] + t * param_0[3]
+north = param_0[1] + t * param_0[4]
+elev = param_0[2] + t * param_0[5]
+north += np.random.rand(n_p) / 3    # add random noise
+enz = np.c_[east, north, elev]
+lr =Line3dReg(enz)
+r = Ransac(lr, 0.2)
+enz_line = r.ransac_filter()
+print("-" * 80)
+print("3D line")
+print(f"{enz_line.shape[0]} points fit")
+# calculate final params
+enz1 = Line3dReg(enz_line)
+params = enz1.lkn_reg()
+print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f}")
+print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f} {param_0[5]:.3f}")
+print(f"RMS: {enz1.RMS():.3f}")

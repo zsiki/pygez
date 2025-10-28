@@ -49,7 +49,7 @@ class BaseReg:
     def RMS(self) ->float:
         """ Calculate mean square error
         """
-        return sqrt(np.sum(self.dist()**2) / self._pnts.shape[0])
+        return sqrt(np.mean(self.dist()**2))
 
 class LinearReg(BaseReg):
     """ class for linear regressions (line, plane)
@@ -269,6 +269,44 @@ class EllipseReg(BaseReg):
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
         return 5
+
+class Line3dReg(BaseReg):
+    """ class for 3D line regression
+        :param pnts: array of coordinates (n,3)
+    """
+    def __init__(self, pnts:np.ndarray):
+        """ """
+        super().__init__(pnts)
+
+    def lkn_reg(self, inds=None) ->np.ndarray:
+        """ Calculate best fitting line parameters
+            x = x0 + a * t; y = y0 + b * t; z = z0 + c * t
+            :params inds: index array to filter points
+            :returns: array of x0, y0, z0, a, b, c (a,b,c) vector normalized
+        """
+        if inds is None:
+            pnts_act = self._pnts.copy()
+        else:
+            pnts_act = self._pnts[inds]
+        centroid = pnts_act.mean(axis=0)  # weight point
+        centered = pnts_act - centroid    # move weight point to origin
+        if pnts_act.shape[0] == 2:
+            direction = pnts_act[1] - pnts_act[0]
+        else:
+            cov = np.cov(centered.T)        # covariance matrix
+            eig_vals, eig_vecs = np.linalg.eig(cov)
+            direction = eig_vecs[:, np.argmax(eig_vals)]  # line direction
+        direction /= np.linalg.norm(direction)  # normalize direction
+        self._params = np.r_[centroid, direction]
+        return self._params
+
+    def dist(self) ->np.ndarray:
+        """Calculate distance from line """
+        return np.linalg.norm(np.cross((self._pnts - self._params[:3]), self._params[3:]), axis=1)
+
+    def min_n(self) ->int:
+        """ return minimal number of points to define geometry """
+        return 2
 
 if __name__ == "__main__":
     east = np.array([1, 5, 3])

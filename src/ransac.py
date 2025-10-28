@@ -42,6 +42,6 @@ class Ransac:
             if n_fit > best:
                 best = n_fit
                 best_enz = self.reg_obj.get_pnts_by_index(fit)
-            if n_fit == n: # all points are on the eometry
+            if n_fit == n: # all points are on the geometry
                 break
         return best_enz
