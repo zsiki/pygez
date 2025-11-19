@@ -11,6 +11,7 @@
 
 from math import sqrt, sin, cos, acos, hypot, atan2
 import numpy as np
+from scipy.optimize import least_squares
 
 def sign(x):
     """ signum function """
@@ -22,7 +23,7 @@ class BaseReg:
     """
     def __init__(self, pnts:np.ndarray):
         """ """
-        self._pnts = pnts
+        self._pnts = pnts.copy()
         self._params = None
 
     def get_dim(self) ->int:
@@ -41,7 +42,7 @@ class BaseReg:
         """ update coordinates """
         self._pnts = pnts
 
-    def dist():
+    def dist(self):
         """ dummy method it has to be implemented in inherited classes
         """
         return None
@@ -308,23 +309,161 @@ class Line3dReg(BaseReg):
         """ return minimal number of points to define geometry """
         return 2
 
-if __name__ == "__main__":
-    east = np.array([1, 5, 3])
-    north = np.array([-3, 7, 9])
-    elev = np.array([9, -2, 2])
-    pp = LinearReg(np.c_[east, north, elev])
-    print(pp.lkn_reg())
-    print(f"RMS: {pp.RMS()}")
-    cc = CircleReg(np.c_[east, north])
-    print(cc.lkn_reg())
-    print(f"RMS: {cc.RMS()}")
-    # ellipse
-    pnts = np.array(
-            [[8.950, 1.450],
-             [7.761, 1.885],
-             [6.000, 1.500],
-             [3.934, 0.354],
-             [1.879, -1.379]])
-    ee = EllipseReg(pnts)
-    print(ee.lkn_reg())
-    print(f"RMS: {ee.RMS()}")
+def cyl_dist(params, act) -> np.ndarray:
+    """ Calculate distance from the cylinder """
+    p0 = params[:3]
+    v = params[3:6]
+    r = params[6]
+
+    diff = act - p0  # vector from p0 to each point
+    # project diff onto v
+    proj_len = diff @ v
+    proj = np.outer(proj_len, v)
+
+    # perpendicular distances from axis
+    perp = diff - proj
+    d = np.linalg.norm(perp, axis=1)
+    # residuals, distances from surface
+    return d - r
+
+class CylinderReg(BaseReg):
+    """ class for cylinder regression, parameters are 
+        x0, 0, z0 a point on the axis
+        vx, vy, vz direction of the axis (normalised)
+        r radius of the cílinder
+
+        :param pnts: array of coordinates (n,3)
+    """
+    def __init__(self, pnts:np.ndarray, params0=None,
+                 ftol=2.3e-16, gtol=2.3e-16, xtol=2.3e-16, loss='linear'):
+        """ """
+        super().__init__(pnts)
+        self._ftol = ftol
+        self._gtol = gtol
+        self._xtol = xtol
+        self._loss = loss
+        self._params0 = params0
+        self._params = None
+
+    def dist(self, act=None) -> np.ndarray:
+        """ Calculate distance from the cylinder """
+        if act is None:
+            dd = cyl_dist(self._params, self._pnts)
+        else:
+            dd = cyl_dist(self._params, act)
+        return dd
+
+    def min_n(self) ->int:
+        """ return minimal number of points to define geometry """
+        return 6
+
+    def lkn_reg(self, inds=None) ->np.ndarray:
+        """ Calculate best fitting cílinder parameters
+            :params inds: index array to filter points
+            :returns: array of x0, y0, z0, a, b, c, r (a,b,c) vector normalized
+        """
+        if inds is None:
+            pnts_act = self._pnts.copy()
+        else:
+            pnts_act = self._pnts[inds]
+        if self._params0 is None:
+            centroid = pnts_act.mean(axis=0)  # weight point
+            # PCA for approximate axis direction
+            _, _, vh = np.linalg.svd(pnts_act - centroid)
+            axis_dir = vh[0]  # first principal component
+            # Approximate radius
+            v = axis_dir / np.linalg.norm(axis_dir)
+            proj_len = (pnts_act - centroid) @ v
+            proj = np.outer(proj_len, v)
+            perp = pnts_act - centroid - proj
+            radius_guess = np.mean(np.linalg.norm(perp, axis=1))
+
+            params0 = np.hstack([centroid, axis_dir, radius_guess])
+        else:
+            params0 = self._params0
+        # Least-squares optimization
+        res = least_squares(cyl_dist, params0, args=(pnts_act,),
+                            ftol=self._ftol, gtol=self._gtol, xtol=self._xtol,
+                            loss=self._loss)
+        if res.success:
+            # normalize direction
+            res.x[3:6] = res.x[3:6] / np.linalg.norm(res.x[3:6])
+            self._params = res.x
+            return self._params.copy()
+        self._params = None
+        return None
+
+def cone_dist(params, act) -> np.ndarray:
+    """ distances from cone """
+    p0 = params[0:3]
+    v = params[3:6]
+    alpha = params[6]
+    # Vector from apex to each point
+    w = act - p0
+    # Projection onto axis
+    h = w @ v  # signed height along axis
+    u = w - np.outer(h, v)
+    r = np.linalg.norm(u, axis=1)
+    # Expected cone radius at each h
+    return r - np.abs(h) * np.tan(alpha)
+
+class ConeReg(BaseReg):
+    """ class for cone regression, parameters are 
+        x0, 0, z0 a apex of cone
+        vx, vy, vz direction of the axis (normalised)
+        alpha half angle of cone
+
+        :param pnts: array of coordinates (n,3)
+    """
+    def __init__(self, pnts:np.ndarray, params0=None, ftol=2.3e-16,
+                 gtol=2.3e-16, xtol=2.3e-16, loss='linear'):
+        """ """
+        super().__init__(pnts)
+        self._ftol = ftol
+        self._gtol = gtol
+        self._xtol = xtol
+        self._loss = loss
+        self._params0 = params0
+        self._params = None
+
+    def dist(self) -> np.ndarray:
+        """ Calculate distance from the cone """
+        return cone_dist(self._params, self._pnts)
+
+    def lkn_reg(self, inds=None) ->np.ndarray:
+        """ Calculate best fitting cone parameters
+            :params inds: index array to filter points
+            :returns: array of x0, y0, z0, a, b, c, r (a,b,c) vector normalized
+        """
+        if inds is None:
+            pnts_act = self._pnts.copy()
+        else:
+            pnts_act = self._pnts[inds]
+        if self._params0 is None:
+            # Rough initial guess using PCA
+            centroid = np.mean(pnts_act, axis=0)
+            _, _, vh = np.linalg.svd(pnts_act - centroid)
+            v0 = vh[0]  # first principal component
+
+            # Initial apex and half-angle estimate
+            p0_guess = centroid - 0.5 * v0
+            diff = pnts_act - p0_guess
+            h = diff @ v0
+            proj = np.outer(h, v0)
+            r = np.linalg.norm(diff - proj, axis=1)
+
+            alpha_guess = np.arctan(np.mean(r) / np.mean(np.abs(h)))
+
+            params0 = np.hstack([p0_guess, v0, alpha_guess])
+        else:
+            params0 = self._params0
+        # Optimize
+        res = least_squares(cone_dist, params0, args=(pnts_act,),
+                            ftol=self._ftol, gtol=self._gtol, xtol=self._xtol,
+                            loss=self._loss)
+        self._params = res.x
+        return self._params
+
+    def min_n(self) ->int:
+        """ return minimal number of points to define geometry """
+        return 7

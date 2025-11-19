@@ -1,7 +1,8 @@
-from ransac import Ransac
-from regression import LinearReg, CircleReg, SphereReg, EllipseReg, Line3dReg
+from math import sin, cos
 import numpy as np
-from matplotlib import pyplot as plt
+from ransac import Ransac
+from regression import (LinearReg, CircleReg, SphereReg, EllipseReg, Line3dReg,
+                        CylinderReg, ConeReg)
 
 max_coo = 1000  # coordinate range [0..max_coo]
 n_p =  100       # number of points
@@ -122,4 +123,81 @@ enz1 = Line3dReg(enz_line)
 params = enz1.lkn_reg()
 print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f}")
 print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f} {param_0[5]:.3f}")
+print(f"RMS: {enz1.RMS():.3f}")
+# Cylinder
+u0 = np.array([0.5, -0.2, 0.1])
+u0 = u0 / np.linalg.norm(u0)
+param_0 = np.array([0.5, -0.2, 0.1, u0[0], u0[1], u0[2], 2.0])
+base_center = param_0[:3]
+radius = param_0[6]
+# Heights and angles
+height_max = 5
+heights = np.random.uniform(-height_max, height_max, n_p)
+angles = np.random.uniform(0, 2 * np.pi, n_p)
+
+# build orthonormal basis (u,v,w) with u=u0
+# pick an arbitrary vector not parallel to u:
+arbitrary = np.array([1.0, 0.0, 0.0])
+if np.abs(np.dot(arbitrary, u0)) > 0.9:
+    arbitrary = np.array([0.0, 1.0, 0.0])
+v = np.cross(u0, arbitrary)
+v /= np.linalg.norm(v)
+w = np.cross(u0, v)
+
+# Cylinder surface
+# points on axis for each height
+axis_points = base_center + np.outer(heights, u0)  # (N,3)
+
+enz = axis_points + (np.cos(angles)[:,None] * radius * v) + \
+        (np.sin(angles)[:,None] * radius * w)
+# add noise
+noise_sigma = 0.01
+enz += np.random.normal(scale=noise_sigma, size=enz.shape)
+#enz = np.array([[-0.337, -0.516, -2.085],
+#                [2.438, 4.302, 0.641],
+#                [1.915, 1.146, 2.460],
+#                [2.521, 0.307, 0.895],
+#                [-0.104, -2.498, -3.092],
+#                [0.526, -2.564, -3.100]])
+cr =CylinderReg(enz)
+r = Ransac(cr, 0.2)
+enz_cyl = r.ransac_filter()
+print("-" * 80)
+print("Cylinder")
+print(f"{enz_cyl.shape[0]} points fit")
+# calculate final params
+cr1 = CylinderReg(enz_cyl)
+params = cr1.lkn_reg()
+if params is not None:
+    print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
+    print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f} {param_0[5]:.3f} {param_0[6]:.3f}")
+    print(f"RMS: {cr1.RMS():.3f}")
+else:
+    print("Cylinder fit failed")
+#res = cr1.dist()
+#print("Points X Y Z v")
+#for i in range(enz.shape[0]):
+#    print(f"{i:5} {enz[i,0]:10.3f} {enz[i,1]:10.3f} {enz[i,2]:10.3f} {res[i]:10.6f}")
+
+# Cone
+param_0 = np.array([0, 0, height_max, 0, 0, 1, np.pi/6])
+apex = param_0[:3]
+v = param_0[3:6]
+v = v / np.linalg.norm(v)
+alpha = param_0[6]
+heights = np.random.rand(n_p) * height_max
+angles = np.random.rand(n_p) * 2 * np.pi
+r = np.abs(height_max - heights) * np.tan(alpha)
+enz = np.array([r * np.cos(angles), r * np.sin(angles), heights])
+cr =ConeReg(enz, param_0)
+r = Ransac(lr, 0.2)
+enz_cone = r.ransac_filter()
+print("-" * 80)
+print("Cone")
+print(f"{enz_line.shape[0]} points fit")
+# calculate final params
+enz1 = ConeReg(enz_cone, param_0)
+params = enz1.lkn_reg()
+print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
+print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f} {param_0[5]:.3f} {params[6]:.3f}")
 print(f"RMS: {enz1.RMS():.3f}")
