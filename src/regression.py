@@ -26,15 +26,21 @@ class BaseReg:
         self._pnts = pnts.copy()
         self._params = None
 
-    def get_dim(self) ->int:
+    @property
+    def dim(self) ->int:
         """ Return dimension of points 2/3 """
+        if self._pnts is None:
+            return 0
         return self._pnts.shape[1]
 
-    def get_n(self) ->int:
+    @property
+    def nump(self) ->int:
         """ Return number of points """
+        if self._pnts is None:
+            return 0
         return self._pnts.shape[0]
 
-    def get_pnts_by_index(self, ind):
+    def get_pnts_by_index(self, ind) ->np.ndarray:
         """ Return subset of points """
         return self._pnts[ind]
 
@@ -63,7 +69,9 @@ class LinearReg(BaseReg):
         """ Calculate best fitting linear function
             2D line or 3D plane
 
-            inds: point idices to use
+            :param inds: point indices to use, all used if None
+            :returns: a, b, c, [d], e0, n0, e1, n1 #TODO plane??? 
+
         """
         if inds is None:
             pnts_act = self._pnts.copy()
@@ -78,17 +86,31 @@ class LinearReg(BaseReg):
         norm = eig_vec[:,np.argmin(np.abs(eig))]
         # move back from weight point
         pure_term = - np.dot(norm, pnts_mean)
-        self._params = np.r_[norm, pure_term]
+        # find start & end point if 2D
+        if self.dim == 2:
+            #n = self.dim   # dimension
+            d = pnts_act.dot(norm) + pure_term
+            e_proj = pnts_act[:,0] - norm[0] * d
+            n_proj = pnts_act[:,1] - norm[1] * d
+            dd = np.sqrt(np.square(e_proj - e_proj[0]) +
+                         np.square(n_proj - n_proj[0]))
+            min_ind = np.argmin(dd)
+            max_ind = np.argmax(dd)
+            self._params = np.r_[norm, pure_term, pnts_act[min_ind], pnts_act[max_ind]]
+        else:
+            # TODO get convex poly in plane
+            self._params = np.r_[norm, pure_term]
         return self._params
 
     def dist(self) ->np.ndarray:
         """ Calculate distance from the line or plane """
-        n = self._pnts.shape[1]   # dimension
+        n = self.dim   # dimension
         return self._pnts.dot(self._params[:n]) + self._params[n]
 
+    @property
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
-        return self.get_dim()
+        return self.dim
 
 class CircleReg(BaseReg):
     """ class for circle regression
@@ -128,6 +150,7 @@ class CircleReg(BaseReg):
         return np.sqrt((self._pnts[:,0] - self._params[0])**2 +
                        (self._pnts[:,1] - self._params[1])**2) - self._params[2]
 
+    @property
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
         return 3
@@ -165,6 +188,7 @@ class SphereReg(BaseReg):
                        (self._pnts[:,1] - self._params[1])**2 +
                        (self._pnts[:,2] - self._params[2])**2) - self._params[3]
 
+    @property
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
         return 4
@@ -267,6 +291,7 @@ class EllipseReg(BaseReg):
         distances = [self.pnt_ell_dist(loc_pnt) for loc_pnt in loc_pnts]
         return np.array(distances)
 
+    @property
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
         return 5
@@ -305,6 +330,7 @@ class Line3dReg(BaseReg):
         """Calculate distance from line """
         return np.linalg.norm(np.cross((self._pnts - self._params[:3]), self._params[3:]), axis=1)
 
+    @property
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
         return 2
@@ -353,6 +379,7 @@ class CylinderReg(BaseReg):
             dd = cyl_dist(self._params, act)
         return dd
 
+    @property
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
         return 6
@@ -360,7 +387,7 @@ class CylinderReg(BaseReg):
     def lkn_reg(self, inds=None) ->np.ndarray:
         """ Calculate best fitting cílinder parameters
             :params inds: index array to filter points
-            :returns: array of x0, y0, z0, a, b, c, r (a,b,c) vector normalized
+            :returns: array of x0, y0, z0, a, b, c, r, x1, y1, z1 (a,b,c) vector normalized
         """
         if inds is None:
             pnts_act = self._pnts.copy()
@@ -388,7 +415,12 @@ class CylinderReg(BaseReg):
         if res.success:
             # normalize direction
             res.x[3:6] = res.x[3:6] / np.linalg.norm(res.x[3:6])
-            self._params = res.x
+            # find min/max points on axis
+            t = np.dot(pnts_act - res.x[0:3], res.x[3:6])
+            p_min = res.x[0:3] + np.min(t) * res.x[3:6]
+            p_max = res.x[0:3] + np.max(t) * res.x[3:6]
+            res.x[0:3] = p_min
+            self._params = np.r_[res.x, p_max]
             return self._params.copy()
         self._params = None
         return None
@@ -440,8 +472,28 @@ class ConeReg(BaseReg):
         else:
             pnts_act = self._pnts[inds]
         if self._params0 is None:
-            # Rough initial guess using PCA
             centroid = np.mean(pnts_act, axis=0)
+            cov = np.cov((pnts_act - centroid).T)
+            eigenvalues, eigenvectors = np.linalg.eigh(cov)
+            # Sort by descending eigenvalue (principal direction first)
+            idx = np.argsort(eigenvalues)[::-1]
+            eigenvalues = eigenvalues[idx]
+            eigenvectors = eigenvectors[:, idx]
+            # TODO
+            # 1st set up a plane using first two eingenvectors
+            #normal = np.cross(eigenvectors[0], eigenvectors[1])
+            #normal = normal / np.linalg.norm(normal)
+            #d = -np.dot(centroid, normal)
+            #plane = np.c_[centroid, d]
+            # 2nd find points close to the plane
+            #distance = np.dot(plane, np.c_[pnts_act, np.ones(pnts_act.shape[0])])
+            #plane_pnts = pnts_act[distance < 0.1]
+            # 3rd project points and the 1st eigenvector to the plane
+
+            # 4th RANSAC fit 2D line
+            # find the intersection of the eigenvector and the 2D line for apex
+            # find the angle of eigenvector and 2D line for alpha
+            # Rough initial guess using PCA
             _, _, vh = np.linalg.svd(pnts_act - centroid)
             v0 = vh[0]  # first principal component
 
@@ -464,6 +516,7 @@ class ConeReg(BaseReg):
         self._params = res.x
         return self._params
 
+    @property
     def min_n(self) ->int:
         """ return minimal number of points to define geometry """
         return 7

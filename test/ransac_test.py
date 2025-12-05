@@ -1,8 +1,14 @@
 from math import sin, cos
+import argparse
 import numpy as np
 from ransac import Ransac
 from regression import (LinearReg, CircleReg, SphereReg, EllipseReg, Line3dReg,
                         CylinderReg, ConeReg)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-s', '--save', action='store_true',
+                    help='Save point clouds')
+args = parser.parse_args()
 
 max_coo = 1000  # coordinate range [0..max_coo]
 n_p =  100       # number of points
@@ -22,6 +28,7 @@ print(f"{en_line.shape[0]} points fit")
 lr1 = LinearReg(en_line)
 params = lr1.lkn_reg()
 print(f"Calculated params: {params[0]:.5f} {params[1]:.5f} {params[2]:.3f}")
+print(f"                   {params[3]:.3f} {params[4]:.3f} - {params[5]:.3f} {params[6]:.3f}")
 print(f"Original   params: {param_0[0]:.5f} {param_0[1]:.5f} {param_0[2]:.3f}")
 print(f"RMS: {lr1.RMS():.3f}")
 # test for plane
@@ -169,9 +176,13 @@ print(f"{enz_cyl.shape[0]} points fit")
 cr1 = CylinderReg(enz_cyl)
 params = cr1.lkn_reg()
 if params is not None:
-    print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
+    print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f} {params[7]:.3f} {params[8]:.3f} {params[9]:.3f}")
     print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f} {param_0[5]:.3f} {param_0[6]:.3f}")
     print(f"RMS: {cr1.RMS():.3f}")
+    if args.save:
+        np.savetxt("cylinder_all.txt", enz)
+        np.savetxt("cylinder_ransac.txt", enz_cyl)
+        np.savetxt("cylinder.txt", np.array([params[0:3], params[7:]]))
 else:
     print("Cylinder fit failed")
 #res = cr1.dist()

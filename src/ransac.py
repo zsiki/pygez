@@ -10,24 +10,50 @@
 """
 
 from random import shuffle
-#import numpy as np
+import numpy as np
 
 class Ransac:
     """ Class to solve generic ransac filtering
         :param reg_obj: object to handle geometry
-        tolerance: tolerance distance from geometry
+        :param tolerance: tolerance distance from geometry
     """
-    def __init__(self, reg_obj, tolerance=0.1):
+    def __init__(self, reg_obj, tolerance:float=0.1, iterations:int=None):
         """ initialize """
-        self.reg_obj = reg_obj
-        self.tolerance = tolerance
+        self._reg_obj = reg_obj
+        self._tolerance = tolerance
+        self._iterations = iterations
 
-    def ransac_filter(self, iterations=None):
-        """ Apply RANSAC flter 
+    @property
+    def reg_obj(self):
+        """ return gemometry object """
+        return self._reg_obj
+
+    @property
+    def tolerance(self) ->float:
+        """ return tolerance """
+        return self._tolerance
+
+    @tolerance.setter
+    def tolerance(self, tol:float):
+        """ set tolerance """
+        self._tolerance = tol
+
+    @property
+    def iterations(self) ->int:
+        """ return iterations """
+        return self._iterations
+
+    @iterations.setter
+    def iterations(self, it:int):
+        """ set iterations"""
+        self._iterations = it
+
+    def ransac_filter(self, iterations=None) ->np.ndarray:
+        """ Apply RANSAC filter 
             returns array of filtered points
         """
-        n = self.reg_obj.get_n()
-        n_geom = self.reg_obj.min_n()
+        n = self.reg_obj.nump
+        n_geom = self.reg_obj.min_n
         if iterations is None:
             iterations = 10 * n
         indices = list(range(n))
