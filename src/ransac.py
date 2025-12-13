@@ -36,7 +36,8 @@ class Ransac:
     @tolerance.setter
     def tolerance(self, tol:float):
         """ set tolerance """
-        self._tolerance = tol
+        if tol > 0.0009:
+            self._tolerance = tol
 
     @property
     def iterations(self) ->int:
@@ -46,7 +47,8 @@ class Ransac:
     @iterations.setter
     def iterations(self, it:int):
         """ set iterations"""
-        self._iterations = it
+        if iteration > 0:
+            self._iterations = it
 
     def ransac_filter(self, iterations=None) ->np.ndarray:
         """ Apply RANSAC filter 
@@ -61,7 +63,10 @@ class Ransac:
         for _ in range(iterations):
             shuffle(indices)
             ind_n = indices[:n_geom]
-            self.reg_obj.lkn_reg(ind_n)
+            try:
+                self.reg_obj.lkn_reg(ind_n, limits=False)
+            except ValueError:
+                continue
             distances = self.reg_obj.dist()
             fit = distances < self.tolerance
             n_fit = len(fit)
