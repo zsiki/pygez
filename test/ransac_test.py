@@ -35,8 +35,8 @@ north = -(param_0[0] * east + param_0[2]) / param_0[1]
 en = np.c_[east, north]
 en += np.random.rand(*en.shape) * noise / 2   # add noise
 lr = LinearReg(en)
-r = Ransac(lr, ransac_limit)
-en_line = r.ransac_filter()
+r = Ransac(lr)
+en_line = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("2D line")
 print(f"{en_line.shape[0]}/{en.shape[0]} points fit")
@@ -65,8 +65,8 @@ elev = -(param_0[0] * east + param_0[1] * north + param_0[3]) / param_0[2]
 enz = np.c_[east, north, elev]
 enz += np.random.rand(*enz.shape) * noise / 3   # add noise
 lr = LinearReg(enz)
-r = Ransac(lr, ransac_limit)
-enz_plane = r.ransac_filter()
+r = Ransac(lr)
+enz_plane = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Plane")
 print(f"{enz_plane.shape[0]}/{enz.shape[0]} points fit")
@@ -96,8 +96,8 @@ north = param_0[2] * np.cos(alpha) + param_0[1]
 en = np.c_[east, north]
 en += np.random.rand(*en.shape) * noise / 2   # add noise
 cr = CircleReg(en)
-r = Ransac(cr, ransac_limit)
-en_circle = r.ransac_filter()
+r = Ransac(cr)
+en_circle = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Circle")
 print(f"{en_circle.shape[0]}/{en.shape[0]} points fit")
@@ -129,8 +129,8 @@ elev = param_0[3] * np.sin(beta) + param_0[2]
 enz = np.c_[east, north, elev]
 enz += np.random.rand(*enz.shape) * noise / 3   # add noise
 sr = SphereReg(enz)
-r = Ransac(sr, ransac_limit)
-enz_sphere = r.ransac_filter()
+r = Ransac(sr)
+enz_sphere = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Sphere")
 print(f"{enz_sphere.shape[0]}/{enz.shape[0]} points fit")
@@ -168,8 +168,8 @@ north = param_0[1] + param_0[2] * np.cos(t) * np.sin(param_0[4]) + \
 en = np.c_[east, north]
 en += np.random.rand(*en.shape) * noise / 2   # add noise
 er = EllipseReg(en)
-r = Ransac(er, ransac_limit)
-en_ellipse = r.ransac_filter()
+r = Ransac(er)
+en_ellipse = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Ellipse")
 print(f"{en_ellipse.shape[0]}/{en.shape[0]} points fit")
@@ -209,8 +209,8 @@ elev = param_0[2] + t * param_0[5]
 enz = np.c_[east, north, elev]
 enz += np.random.rand(*enz.shape) * noise / 3   # add noise
 lr =Line3dReg(enz)
-r = Ransac(lr, ransac_limit)
-enz_line = r.ransac_filter()
+r = Ransac(lr)
+enz_line = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("3D line")
 print(f"{enz_line.shape[0]}/{enz.shape[0]} points fit")
@@ -271,8 +271,8 @@ enz += np.random.rand(*enz.shape) * noise / 3   # add noise
 #                [-0.104, -2.498, -3.092],
 #                [0.526, -2.564, -3.100]])
 cr =CylinderReg(enz)
-r = Ransac(cr, ransac_limit)
-enz_cyl = r.ransac_filter()
+r = Ransac(cr)
+enz_cyl = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Cylinder")
 print(f"{enz_cyl.shape[0]}/{enz.shape[0]} points fit")
@@ -347,8 +347,8 @@ enz = axis_points + (np.cos(angles)[:,None] * r[:,None] * v) + \
         (np.sin(angles)[:,None] * r[:,None] * w)
 #enz = np.array([r * np.cos(angles), r * np.sin(angles), heights]).T
 cr =ConeReg(enz, param_0)
-r = Ransac(lr, ransac_limit)
-enz_cone = r.ransac_filter()
+r = Ransac(lr)
+enz_cone = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Cone")
 print(f"{enz_cone.shape[0]}/{enz.shape[0]} points fit")

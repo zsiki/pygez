@@ -10,6 +10,7 @@
 """
 
 from random import shuffle
+from math import log
 import numpy as np
 
 class Ransac:
@@ -17,47 +18,32 @@ class Ransac:
         :param reg_obj: object to handle geometry
         :param tolerance: tolerance distance from geometry
     """
-    def __init__(self, reg_obj, tolerance:float=0.1, iterations:int=None):
+    def __init__(self, reg_obj):
         """ initialize """
         self._reg_obj = reg_obj
-        self._tolerance = tolerance
-        self._iterations = iterations
 
     @property
     def reg_obj(self):
         """ return gemometry object """
         return self._reg_obj
 
-    @property
-    def tolerance(self) ->float:
-        """ return tolerance """
-        return self._tolerance
-
-    @tolerance.setter
-    def tolerance(self, tol:float):
-        """ set tolerance """
-        if tol > 0.0009:
-            self._tolerance = tol
-
-    @property
-    def iterations(self) ->int:
-        """ return iterations """
-        return self._iterations
-
-    @iterations.setter
-    def iterations(self, it:int):
-        """ set iterations"""
-        if iteration > 0:
-            self._iterations = it
-
-    def ransac_filter(self, iterations=None) ->np.ndarray:
+    def ransac_filter(self, tolerance:float=0.03, iterations:int=None,
+                      p:float=0.99, w:float=0.51) ->np.ndarray:
         """ Apply RANSAC filter 
-            returns array of filtered points
+            :param iteration: iteration number for RANSAC
+            :params p: probability for result
+            :params w: percentage of inlier points
+            :returns: array of filtered points
+
+            p and w are used if iteration is not given (None)
         """
         n = self.reg_obj.nump
         n_geom = self.reg_obj.min_n
         if iterations is None:
-            iterations = 10 * n
+            if p is None or w is None:
+                iterations = 10 * n
+            else:
+                iterations = int(log(1 - p) / log(1 - w**n_geom) + 1) 
         indices = list(range(n))
         best = 0
         for _ in range(iterations):
@@ -68,7 +54,7 @@ class Ransac:
             except ValueError:
                 continue
             distances = self.reg_obj.dist()
-            fit = distances < self.tolerance
+            fit = distances < tolerance
             n_fit = len(fit)
             if n_fit > best:
                 best = n_fit
