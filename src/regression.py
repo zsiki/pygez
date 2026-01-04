@@ -24,6 +24,8 @@ class BaseReg:
     """
     def __init__(self, pnts:np.ndarray):
         """ """
+        # move origin to weight point
+        #self._weightp = np.mean(pnts, axis=0)
         self._pnts = pnts.copy()
         self._params = None     # actual parameters of geometry
 
@@ -45,9 +47,9 @@ class BaseReg:
         """ Return subset of points """
         return self._pnts[ind]
 
-    def set_pnts(self, pnts:np.ndarray):
-        """ update coordinates """
-        self._pnts = pnts
+    #def set_pnts(self, pnts:np.ndarray):
+    #    """ update coordinates """
+    #    self._pnts = pnts
 
     def dist(self):
         """ dummy method it has to be implemented in inherited classes
@@ -268,7 +270,8 @@ class EllipseReg(BaseReg):
         evals_clamped = np.where(evals < 0, np.where(np.abs(evals) < 1e-12, 0.0, evals), evals)
         # If any eigenvalue is <= 0 (not positive definite), warn / fail
         if np.any(evals_clamped <= 0):
-            print("This may not be an ellipse (or fit numerics are poor).")
+        #    print("This may not be an ellipse (or fit numerics are poor).")
+            raise ValueError("This may not be an ellipse (or fit numerics are poor).")
 
         axes_sq = -F / (evals_clamped + eps)
         axes_sq = np.where(axes_sq < 0, np.where(np.abs(axes_sq) < 1e-8, 0.0, axes_sq), axes_sq)
@@ -300,6 +303,8 @@ class EllipseReg(BaseReg):
             pnts_act = self._pnts.copy()
         else:
             pnts_act = self._pnts[inds]
+        pnts_mean = np.mean(pnts_act, axis=0)   # weight point
+        pnts_act -= pnts_mean     # origin to weight point
         x = pnts_act[:,0]
         y = pnts_act[:,1]
         mat = np.c_[x**2, x*y, y**2, x, y, np.ones_like(x)]
@@ -316,6 +321,9 @@ class EllipseReg(BaseReg):
 
         # calculating ellipse geometric parameters
         self._params = self.par2geom(a, b, c, d, e, f)
+        # move origin back
+        self._params[0] += pnts_mean[0]
+        self._params[1] += pnts_mean[1]
         if limits:
             a, b = self._params[3:5]
             w = np.array([sin(self._params[4]), -cos(self._params[4])])
@@ -367,7 +375,7 @@ class EllipseReg(BaseReg):
         xe, ye = a * co, b * si
         return hypot(xe - xp, ye - yp)
 
-    def dist(self) ->np.ndarray:
+    def old_dist(self) ->np.ndarray:
         """ distance from points to ellipse """
         phi = self._params[4]           # rotational angle
         rot = np.array([[cos(phi), -sin(phi)],
@@ -376,6 +384,36 @@ class EllipseReg(BaseReg):
         loc_pnts = (self._pnts - self._params[:2]) @ rot
         distances = [self.pnt_ell_dist(loc_pnt) for loc_pnt in loc_pnts]
         return np.array(distances)
+
+    def dist(self, signed=False):
+        """
+            Approximate distance from points to an ellipse (geometric form).
+            :param signed : return signed distance (negative = inside)
+            :returns: approximate distance to ellipse
+        """
+        x0, y0 = self._params[:2]
+        a, b = self._params[2:4]
+        theta = self._params[4]
+        # Translate points
+        X = self._pnts[:, 0] - x0
+        Y = self._pnts[:, 1] - y0
+        c = np.cos(theta)
+        s = np.sin(theta)
+        # Rotate into ellipse frame
+        xp =  c * X + s * Y
+        yp = -s * X + c * Y
+        # Implicit function
+        f = (xp**2) / a**2 + (yp**2) / b**2 - 1.0
+        # Gradient in ellipse frame
+        fxp = 2 * xp / a**2
+        fyp = 2 * yp / b**2
+        # Rotate gradient back to world frame
+        fx =  c * fxp - s * fyp
+        fy =  s * fxp + c * fyp
+        grad_norm = np.sqrt(fx**2 + fy**2)
+        grad_norm = np.maximum(grad_norm, 1e-12)
+        dist = f / grad_norm if signed else np.abs(f) / grad_norm
+        return dist
 
     @property
     def min_n(self) ->int:
@@ -430,7 +468,10 @@ class Line3dReg(BaseReg):
         return 2
 
 def cyl_dist(params, act) -> np.ndarray:
-    """ Calculate distance from the cylinder """
+    """ Calculate distance from the cylinder
+        :param params: ellipse parameters
+        :param act: points
+    """
     p0 = params[:3]
     v = params[3:6]
     r = params[6]
