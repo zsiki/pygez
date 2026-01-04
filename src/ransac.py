@@ -55,7 +55,7 @@ class Ransac:
                 continue
             distances = self.reg_obj.dist()
             fit = distances < tolerance
-            n_fit = len(fit)
+            n_fit = distances[fit].size
             if n_fit > best:
                 best = n_fit
                 best_enz = self.reg_obj.get_pnts_by_index(fit)
