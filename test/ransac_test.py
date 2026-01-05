@@ -7,17 +7,22 @@ from ransac import Ransac
 from regression import (LinearReg, CircleReg, SphereReg, EllipseReg, Line3dReg,
                         CylinderReg, ConeReg)
 
+DEFAULT_NUMP = 100
+DEFAULT_MAX = 1000  # coordinate range 0 - DEFAULT_MAX
+DEFAULT_NOISE = 0.1
+DEFAULT_LIMIT = 0.03
+DEFAULT_SEED = None
 parser = argparse.ArgumentParser()
-parser.add_argument('-n', '--nump', type=int, default=100,
-                    help='Number of random points used')
-parser.add_argument('-x', '--max', type=float, default=1000,
-                    help='Maximal coordinate range')
-parser.add_argument('-r', '--random_noise', type=float, default=0.1,
-                    help='Random noise range')
-parser.add_argument('-s', '--random_seed', type=int, default=None,
-                    help='Random seed')
-parser.add_argument('-l', '--limit', type=float, default=0.03,
-                    help='Distance limit for RANSAC filter')
+parser.add_argument('-n', '--nump', type=int, default=DEFAULT_NUMP,
+                    help=f'Number of random points used, default: {DEFAULT_NUMP}')
+parser.add_argument('-x', '--max', type=float, default=DEFAULT_MAX,
+                    help=f'Maximal coordinate range, default: {DEFAULT_MAX}')
+parser.add_argument('-r', '--random_noise', type=float, default=DEFAULT_NOISE,
+                    help=f'Random noise range, default: {DEFAULT_NOISE}')
+parser.add_argument('-s', '--random_seed', type=int, default=DEFAULT_SEED,
+                    help=f'Random seed, default: {DEFAULT_SEED}')
+parser.add_argument('-l', '--limit', type=float, default=DEFAULT_LIMIT,
+                    help=f'Distance limit for RANSAC filter, default: {DEFAULT_LIMIT}')
 parser.add_argument('-p', '--plot', action='store_true',
                     help='Plot points')
 args = parser.parse_args()
@@ -36,7 +41,7 @@ en = np.c_[east, north]
 en += np.random.rand(*en.shape) * noise / 2   # add noise
 lr = LinearReg(en)
 r = Ransac(lr)
-en_line = r.ransac_filter(tolerance=ransac_limit)
+en_line, iterations = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("2D line")
 print(f"{en_line.shape[0]}/{en.shape[0]} points fit")
@@ -46,7 +51,7 @@ params = lr1.lkn_reg(limits=True)
 print(f"Calculated params: {params[0]:.5f} {params[1]:.5f} {params[2]:.3f}")
 print(f"Limits:            {params[3]:.3f} {params[4]:.3f} - {params[5]:.3f} {params[6]:.3f}")
 print(f"Original   params: {param_0[0]:.5f} {param_0[1]:.5f} {param_0[2]:.3f}")
-print(f"RMS: {lr1.RMS():.3f}")
+print(f"RMS: {lr1.RMS():.3f}, iterations: {iterations}")
 if args.plot:
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -66,7 +71,7 @@ enz = np.c_[east, north, elev]
 enz += np.random.rand(*enz.shape) * noise / 3   # add noise
 lr = LinearReg(enz)
 r = Ransac(lr)
-enz_plane = r.ransac_filter(tolerance=ransac_limit)
+enz_plane, iterations = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Plane")
 print(f"{enz_plane.shape[0]}/{enz.shape[0]} points fit")
@@ -76,7 +81,7 @@ params = lr1.lkn_reg(limits=True)
 print(f"Calculated params: {params[0]:.5f} {params[1]:.5f} {params[2]:.5f} {params[3]:.3f}")
 print("Convex hull: ", np.reshape(params[4:],(-1,3)))
 print(f"Original   params: {param_0[0]:.5f} {param_0[1]:.5f} {param_0[2]:.5f} {param_0[3]:.3f}")
-print(f"RMS: {lr1.RMS():.3f}")
+print(f"RMS: {lr1.RMS():.3f}, iterations: {iterations}")
 if args.plot:
     points = np.reshape(params[4:],(-1,3))
     fig = plt.figure()
@@ -97,7 +102,7 @@ en = np.c_[east, north]
 en += np.random.rand(*en.shape) * noise / 2   # add noise
 cr = CircleReg(en)
 r = Ransac(cr)
-en_circle = r.ransac_filter(tolerance=ransac_limit)
+en_circle, iterations = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Circle")
 print(f"{en_circle.shape[0]}/{en.shape[0]} points fit")
@@ -106,7 +111,7 @@ cr1 = CircleReg(en_circle)
 params = cr1.lkn_reg(limits=True)
 print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f}")
 print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f}")
-print(f"RMS: {cr1.RMS():.3f}")
+print(f"RMS: {cr1.RMS():.3f}, iterations: {iterations}")
 if args.plot:
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -130,7 +135,7 @@ enz = np.c_[east, north, elev]
 enz += np.random.rand(*enz.shape) * noise / 3   # add noise
 sr = SphereReg(enz)
 r = Ransac(sr)
-enz_sphere = r.ransac_filter(tolerance=ransac_limit)
+enz_sphere, iterations = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Sphere")
 print(f"{enz_sphere.shape[0]}/{enz.shape[0]} points fit")
@@ -139,7 +144,7 @@ sr1 = SphereReg(enz_sphere)
 params = sr1.lkn_reg(limits=True)
 print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f}")
 print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f}")
-print(f"RMS: {sr1.RMS():.3f}")
+print(f"RMS: {sr1.RMS():.3f}, iterations: {iterations}")
 if args.plot:
     # generate sphere
     u = np.linspace(0, 2 * np.pi, 30)
@@ -169,7 +174,7 @@ en = np.c_[east, north]
 en += np.random.rand(*en.shape) * noise / 2   # add noise
 er = EllipseReg(en)
 r = Ransac(er)
-en_ellipse = r.ransac_filter(tolerance=ransac_limit)
+en_ellipse, iterations = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Ellipse")
 print(f"{en_ellipse.shape[0]}/{en.shape[0]} points fit")
@@ -183,7 +188,7 @@ except ValueError:
 if params is not None:
     print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f}")
     print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f}")
-    print(f"RMS: {el1.RMS():.3f}")
+    print(f"RMS: {el1.RMS():.3f}, iterations: {iterations}")
     if args.plot:
         t_fit = np.linspace(0, 2*np.pi, 400)
         x0, y0, a_fit, b_fit, theta = params[:5]
@@ -210,7 +215,7 @@ enz = np.c_[east, north, elev]
 enz += np.random.rand(*enz.shape) * noise / 3   # add noise
 lr =Line3dReg(enz)
 r = Ransac(lr)
-enz_line = r.ransac_filter(tolerance=ransac_limit)
+enz_line, iterations = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("3D line")
 print(f"{enz_line.shape[0]}/{enz.shape[0]} points fit")
@@ -219,7 +224,7 @@ enz1 = Line3dReg(enz_line)
 params = enz1.lkn_reg(limits=True)
 print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f}")
 print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f} {param_0[5]:.3f}")
-print(f"RMS: {enz1.RMS():.3f}")
+print(f"RMS: {enz1.RMS():.3f}, iterations: {iterations}")
 if args.plot:
     x = params[6::3]
     y = params[7::3]
@@ -272,7 +277,7 @@ enz += np.random.rand(*enz.shape) * noise / 3   # add noise
 #                [0.526, -2.564, -3.100]])
 cr =CylinderReg(enz)
 r = Ransac(cr)
-enz_cyl = r.ransac_filter(tolerance=ransac_limit)
+enz_cyl, iterations = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Cylinder")
 print(f"{enz_cyl.shape[0]}/{enz.shape[0]} points fit")
@@ -287,7 +292,7 @@ if params is not None:
     print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
     print(f"Limits           :{params[7]:.3f} {params[8]:.3f} {params[9]:.3f} - {params[0]:.3f} {params[1]:.3f} {params[2]:.3f}")
     print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f} {param_0[5]:.3f} {param_0[6]:.3f}")
-    print(f"RMS: {cr1.RMS():.3f}")
+    print(f"RMS: {cr1.RMS():.3f}, iterations: {iterations}")
     if args.plot:
         maxh = np.linalg.norm(params[:3] - params[7:])
         heights = np.linspace(0, maxh, num=10)
@@ -348,7 +353,7 @@ enz = axis_points + (np.cos(angles)[:,None] * r[:,None] * v) + \
 #enz = np.array([r * np.cos(angles), r * np.sin(angles), heights]).T
 cr =ConeReg(enz, param_0)
 r = Ransac(lr)
-enz_cone = r.ransac_filter(tolerance=ransac_limit)
+enz_cone, iterations = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Cone")
 print(f"{enz_cone.shape[0]}/{enz.shape[0]} points fit")
@@ -363,7 +368,7 @@ if params:
     print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
     print(f"Limits           :{params[7]:.3f} {params[8]:.3f} {params[9]:.3f} - {params[10]:.3f} {params[11]:.3f} {params[12]:.3f}")
     print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f} {param_0[5]:.3f} {params[6]:.3f}")
-    print(f"RMS: {enz1.RMS():.3f}")
+    print(f"RMS: {enz1.RMS():.3f}, iterations: {iterations}")
     if args.plot:
         maxh = np.linalg.norm(params[:3] - params[7:10])    # height from apex
         maxh1 = np.linalg.norm(params[10:13] - params[7:10])    # real height range

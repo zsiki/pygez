@@ -132,11 +132,11 @@ if len(centers) > 2:
     lr =Line3dReg(enz)
     l3d = lr.lkn_reg()
     print(f"Axis line:\n x = {l3d[0]:12.3f} + {l3d[3]:12.6f} * t\n y = {l3d[1]:12.3f} + {l3d[4]:12.6f} * t\n z = {l3d[2]:12.3f} + {l3d[5]:12.6f} * t\n")
-    tilt = atan(sqrt(l3d[3]**2 + l3d[4]**2) / l3d[5]) / pi * 200
-    azi = atan2(l3d[3], l3d[4]) / pi * 200
+    tilt = atan(sqrt(l3d[3]**2 + l3d[4]**2) / l3d[5]) / pi * 180
+    azi = atan2(l3d[3], l3d[4]) / pi * 180
     if azi < 0:
         azi += 400
-    print(f"Tilt angle: {tilt:.4f} gon, Tilt direction: {azi:.4f} gon")
+    print(f"Tilt angle: {tilt:.4f} deg, Tilt direction: {azi:.4f} deg")
     print(f"RMS: {lr.RMS():.3f}")
     if args.draw:
         # create 3D plot
