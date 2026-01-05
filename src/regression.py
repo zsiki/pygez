@@ -24,8 +24,6 @@ class BaseReg:
     """
     def __init__(self, pnts:np.ndarray):
         """ """
-        # move origin to weight point
-        #self._weightp = np.mean(pnts, axis=0)
         self._pnts = pnts.copy()
         self._params = None     # actual parameters of geometry
 
@@ -46,10 +44,6 @@ class BaseReg:
     def get_pnts_by_index(self, ind) ->np.ndarray:
         """ Return subset of points """
         return self._pnts[ind]
-
-    #def set_pnts(self, pnts:np.ndarray):
-    #    """ update coordinates """
-    #    self._pnts = pnts
 
     def dist(self):
         """ dummy method it has to be implemented in inherited classes
