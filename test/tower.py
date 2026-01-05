@@ -138,24 +138,24 @@ if len(centers) > 2:
         azi += 400
     print(f"Tilt angle: {tilt:.4f} gon, Tilt direction: {azi:.4f} gon")
     print(f"RMS: {lr.RMS():.3f}")
-if args.draw:
-    # create 3D plot
-    # axis between lowest and highest section
-    z0 = enz[0,2]
-    t0 = (z0 - l3d[2]) / l3d[5]
-    e0 = l3d[0] + t0 * l3d[3]
-    n0 = l3d[1] + t0 * l3d[4]
-    z1 = enz[-1,2]
-    t1 = (z1 - l3d[2]) / l3d[5]
-    e1 = l3d[0] + t1 * l3d[3]
-    n1 = l3d[1] + t1 * l3d[4]
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot([e0, e1], [n0, n1], [z0, z1], c='blue')
-    for i in range(len(centers)):
-        e_lst, n_lst= generate_points(enz[i,0], enz[i,1], pars[i,0], pars[i,1], pars[i,2])
-        z_lst = np.full_like(e_lst, enz[i, 2])
-        ax.plot(e_lst, n_lst, z_lst, c='red')
-        ax.set_aspect('equal')
-        ax.view_init(32, 60)
-    plt.show()
+    if args.draw:
+        # create 3D plot
+        # axis between lowest and highest section
+        z0 = enz[0,2]
+        t0 = (z0 - l3d[2]) / l3d[5]
+        e0 = l3d[0] + t0 * l3d[3]
+        n0 = l3d[1] + t0 * l3d[4]
+        z1 = enz[-1,2]
+        t1 = (z1 - l3d[2]) / l3d[5]
+        e1 = l3d[0] + t1 * l3d[3]
+        n1 = l3d[1] + t1 * l3d[4]
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot([e0, e1], [n0, n1], [z0, z1], c='blue')
+        for i in range(len(centers)):
+            e_lst, n_lst= generate_points(enz[i,0], enz[i,1], pars[i,0], pars[i,1], pars[i,2])
+            z_lst = np.full_like(e_lst, enz[i, 2])
+            ax.plot(e_lst, n_lst, z_lst, c='red')
+            ax.set_aspect('equal')
+            ax.view_init(32, 60)
+        plt.show()
