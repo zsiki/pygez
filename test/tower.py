@@ -4,6 +4,7 @@
 """
 
 from math import sqrt, atan, atan2, pi
+from os import path
 import sys
 import argparse
 import numpy as np
@@ -25,23 +26,21 @@ def generate_points(x0, y0, ap, bp, phi, npts=100, tmin=0, tmax=2*np.pi):
     y = y0 + ap * np.cos(t) * np.sin(phi) + bp * np.sin(t) * np.cos(phi)
     return x, y
 
-def ell_draw(x, y, xr, yr, x0, y0, ap, bp, phi, title=''):
+def ell_draw(ax, x, y, xr, yr, x0, y0, ap, bp, phi, title=''):
     """ draw the ellipse
         x, y all points
         xr, yr RANSAC filtered points
         x0, y0, ap, bp, phi ellipse parameters
     """
-    plt.rcParams['font.size'] = 14
-    plt.plot(x, y, 'x', label='outliers')
-    plt.plot(xr, yr, 'o', label='inliers')
+    ax.plot(x, y, 'x', label='outliers')
+    ax.plot(xr, yr, 'o', label='inliers')
     x_lst, y_lst = generate_points(x0, y0, ap, bp, phi, 100)
-    plt.plot(x_lst, y_lst)
-    plt.axis('scaled')
-    plt.title(title)
-    plt.xlabel('[m]')
-    plt.ylabel('[m]')
-    plt.legend()
-    plt.show()
+    ax.plot(x_lst, y_lst)
+    ax.axis('scaled')
+    ax.set_title(title, wrap=True)
+    ax.set_xlabel('[m]')
+    ax.set_ylabel('[m]')
+    ax.legend()
 
 parser = argparse.ArgumentParser(prog='tower', description='fit circle or ellipse to points in horizontal sections using RANSAC filtering')
 parser.add_argument('name', metavar='file_name', type=str, nargs=1,
@@ -54,19 +53,20 @@ parser.add_argument('-v', '--vtol', type=float, default=0.025,
                     help='Vertical tolerance for sections, default 0.025 m')
 parser.add_argument('-i', '--withid', action='store_true',
                     help='there is an id in first column of input file')
-parser.add_argument('-p', '--print_coo', action='store_true',
-                    help='print coordinates of points on ellipse/circle')
 parser.add_argument('-e', '--elev', nargs='+', required=False, default=['0'],
                     help='elevations to make sections, default=0')
 parser.add_argument('-l', '--ellipse', action='store_true',
                     help='fit ellipse not circle')
-parser.add_argument('-d', '--draw', action='store_true',
-                    help='draw result')
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-r', '--iterations', type=int, default=None,
                     help='RANSAC iterations, default None (estimated)')
 group.add_argument('-w', '--percent', type=float, default=0.51,
                     help='Percent of inliers for RANSAC , default 0.51')
+group1 = parser.add_mutually_exclusive_group()
+group1.add_argument('-d', '--draw', action='store_true',
+                    help='draw result and show on screen')
+group1.add_argument('-p', '--save_plot', type=str, default=None,
+                    help='draw result and save to file')
 args = parser.parse_args()
 
 if args.withid:
@@ -83,6 +83,14 @@ except:
 MIN_N = 5 if args.ellipse else 3
 centers = []
 pp = []
+if args.draw or args.save_plot:
+    nc = 4    # number of columns in plot
+    nr = len(args.elev) // nc
+    if len(args.elev) % nc != 0:
+        nr += 1
+    fig, axs = plt.subplots(nrows=nr, ncols=nc, figsize=(nc*4, nr*4),
+                            sharex=True, sharey=True)
+    aaxs = axs.flatten(order='F')
 for i, h in enumerate(args.elev):
     height = float(h)
     # select points at given height
@@ -115,30 +123,43 @@ for i, h in enumerate(args.elev):
             phi = 0
             rms = reg.RMS()
             print(f"Circle: {e0:.3f},{n0:.3f},{height:.3f},{a:.3f},{rms:.3f},{en.shape[0]}/{section.shape[0]}")
-        if args.draw:
+        if args.draw or args.save_plot:
             if args.ellipse:
                 geom = "Ellipse"
             else:
                 geom = "Circle"
             text = f"{geom} section {h} m RMS={rms:.3f} {en.shape[0]}/{section.shape[0]}"
-            ell_draw(section[:,0], section[:,1], en[:,0], en[:,1],
+            ell_draw(aaxs[i], section[:,0], section[:,1], en[:,0], en[:,1],
                      e0, n0, a, b, phi,
-                     f"Section {h} m RMS={rms:.3f} {en.shape[0]}/{section.shape[0]}")
+                     f"Section {h} m\nRMS={rms:.3f} {en.shape[0]}/{section.shape[0]}")
+if args.draw:
+    plt.show()
+else:
+    plt.savefig(args.save_plot)
 
 if len(centers) > 2:
-    # fit 3D line to centers without RANSAC
+    # fit 3D line to centers with RANSAC
     enz = np.array(centers)
     pars = np.array(pp)
-    lr =Line3dReg(enz)
+    lr0 =Line3dReg(enz)
+    r = Ransac(lr0)
+    enz_line, iterations = r.ransac_filter(tolerance=8*args.tol)
+    lr = Line3dReg(enz_line)
     l3d = lr.lkn_reg()
-    print(f"Axis line:\n x = {l3d[0]:12.3f} + {l3d[3]:12.6f} * t\n y = {l3d[1]:12.3f} + {l3d[4]:12.6f} * t\n z = {l3d[2]:12.3f} + {l3d[5]:12.6f} * t\n")
+    print(f"Axis line {enz_line.shape[0]}/{enz.shape[0]}/{iterations}")
+    print(f" x = {l3d[0]:12.3f} + {l3d[3]:12.6f} * t\n y = {l3d[1]:12.3f} + {l3d[4]:12.6f} * t\n z = {l3d[2]:12.3f} + {l3d[5]:12.6f} * t\n")
     tilt = atan(sqrt(l3d[3]**2 + l3d[4]**2) / l3d[5]) / pi * 180
     azi = atan2(l3d[3], l3d[4]) / pi * 180
+    if tilt < 0:
+        tilt = abs(tilt)
+        azi += 180
+        if azi > 360:
+            azi -= 360
     if azi < 0:
-        azi += 400
+        azi += 360
     print(f"Tilt angle: {tilt:.4f} deg, Tilt direction: {azi:.4f} deg")
     print(f"RMS: {lr.RMS():.3f}")
-    if args.draw:
+    if args.draw or args.save_plot:
         # create 3D plot
         # axis between lowest and highest section
         z0 = enz[0,2]
@@ -157,5 +178,10 @@ if len(centers) > 2:
             z_lst = np.full_like(e_lst, enz[i, 2])
             ax.plot(e_lst, n_lst, z_lst, c='red')
             ax.set_aspect('equal')
+            ax.set_title(f"Axis line {enz_line.shape[0]}/{enz.shape[0]}/{iterations}")
             ax.view_init(32, 60)
-        plt.show()
+        if args.draw:
+            plt.show()
+        else:
+            name, ext = path.splitext(args.save_plot)
+            plt.savefig(name+'1'+ext)
