@@ -267,22 +267,15 @@ axis_points = base_center + np.outer(heights, u0)  # (N,3)
 enz = axis_points + (np.cos(angles)[:,None] * radius * v) + \
         (np.sin(angles)[:,None] * radius * w)
 # add noise
-#enz += np.random.normal(scale=noise, size=enz.shape)
 enz += np.random.rand(*enz.shape) * noise / 3   # add noise
-#enz = np.array([[-0.337, -0.516, -2.085],
-#                [2.438, 4.302, 0.641],
-#                [1.915, 1.146, 2.460],
-#                [2.521, 0.307, 0.895],
-#                [-0.104, -2.498, -3.092],
-#                [0.526, -2.564, -3.100]])
 cr =CylinderReg(enz)
 r = Ransac(cr)
 enz_cyl, iterations = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Cylinder")
 print(f"{enz_cyl.shape[0]}/{enz.shape[0]} points fit")
-# calculate final params
-cr1 = CylinderReg(enz_cyl)
+# calculate final params using preliminirary parameters from RANSAC
+cr1 = CylinderReg(enz_cyl, params0=cr.params[:7])
 try:
     params = cr1.lkn_reg(limits=True)
 except ValueError:
@@ -323,10 +316,6 @@ if params is not None:
         ax.view_init(32, 60)
         ax.set_aspect('equal')
         plt.show()
-#res = cr1.dist()
-#print("Points X Y Z v")
-#for i in range(enz.shape[0]):
-#    print(f"{i:5} {enz[i,0]:10.3f} {enz[i,1]:10.3f} {enz[i,2]:10.3f} {res[i]:10.6f}")
 
 # Cone
 param_0 = np.array([0, 0, height_max, 0, 0, 1, np.pi/6])
@@ -350,15 +339,14 @@ w /= np.linalg.norm(w)
 
 enz = axis_points + (np.cos(angles)[:,None] * r[:,None] * v) + \
         (np.sin(angles)[:,None] * r[:,None] * w)
-#enz = np.array([r * np.cos(angles), r * np.sin(angles), heights]).T
 cr =ConeReg(enz, param_0)
 r = Ransac(lr)
 enz_cone, iterations = r.ransac_filter(tolerance=ransac_limit)
 print("-" * 80)
 print("Cone")
 print(f"{enz_cone.shape[0]}/{enz.shape[0]} points fit")
-# calculate final params
-enz1 = ConeReg(enz_cone, param_0)
+# calculate final params using preliminirary parameters from RANSAC
+enz1 = ConeReg(enz_cone, params0=cr.params[:7])
 try:
     params = enz1.lkn_reg()
 except ValueError:
@@ -366,7 +354,7 @@ except ValueError:
     params = None
 if params:
     print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
-    print(f"Limits           :{params[7]:.3f} {params[8]:.3f} {params[9]:.3f} - {params[10]:.3f} {params[11]:.3f} {params[12]:.3f}")
+    print(f"Limits           : {params[7]:.3f} {params[8]:.3f} {params[9]:.3f} - {params[10]:.3f} {params[11]:.3f} {params[12]:.3f}")
     print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f} {param_0[5]:.3f} {params[6]:.3f}")
     print(f"RMS: {enz1.RMS():.3f}, iterations: {iterations}")
     if args.plot:
