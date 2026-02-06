@@ -46,6 +46,7 @@ class Ransac:
                 iterations = int(log(1 - p) / log(1 - w**n_geom) + 1) 
         indices = list(range(n))
         best = 0
+        best_enz = None
         for _ in range(iterations):
             shuffle(indices)
             ind_n = indices[:n_geom]
