@@ -28,6 +28,11 @@ class BaseReg:
         self._params = None     # actual parameters of geometry
 
     @property
+    def params(self) -> np.ndarray:
+        """ Return parameters """
+        return self._params
+
+    @property
     def dim(self) ->int:
         """ Return dimension of points 2/3 """
         if self._pnts is None:
@@ -541,11 +546,12 @@ class CylinderReg(BaseReg):
         res = least_squares(cyl_dist, params0, args=(pnts_act,),
                             ftol=self._ftol, gtol=self._gtol, xtol=self._xtol,
                             loss=self._loss)
-        if not res.success:
-            raise ValueError("Cylinder fitting failed")
         # normalize direction
         res.x[3:6] = res.x[3:6] / np.linalg.norm(res.x[3:6])
+        # save params even in unsuccessful case
         self._params = res.x
+        if not res.success:
+            raise ValueError(res.message)
         if limits:
             # find min/max points on axis
             t = np.dot(pnts_act - res.x[0:3], res.x[3:6])
