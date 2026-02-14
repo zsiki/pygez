@@ -20,12 +20,16 @@ parser.add_argument('-s', '--sep', type=str, default=";",
                     help='field separator in input file, default=;')
 parser.add_argument('-t', '--tol', type=float, default=0.025,
                     help='Tolerance for RANSAC, default 0.025 m')
+parser.add_argument('-r', '--iterations', type=int, default=None,
+                    help='RANSAC iterations, default None (estimated)')
 parser.add_argument('-c', '--scale', type=float, default=1,
                     help='Scale to pixels, default 1')
 parser.add_argument('-o', '--offset', type=float, default=0,
                     help='Offset in pixels, default 0')
 parser.add_argument('-i', '--withid', action='store_true',
                     help='there is an id in first column of input file')
+parser.add_argument('-n', '--no_align', action='store_true',
+                    help='Do not aligned CRS to plane')
 args = parser.parse_args()
 
 if args.withid:
@@ -42,15 +46,17 @@ except:
 reg = LinearReg(enz)
 # filter point with RANSAC
 r = Ransac(reg)
-enz_plane, iterations = r.ransac_filter(tolerance=args.tol)
+enz_plane, iterations = r.ransac_filter(tolerance=args.tol, iterations=args.iterations)
 final_reg = LinearReg(enz_plane)
-# transform coords to palen
 params = final_reg.lkn_reg()
-print(f"RMS: {final_reg.RMS():.3f}, iterations: {iterations}")
-print(f"Calculated params: {params[0]:.5f} {params[1]:.5f} {params[2]:.5f} {params[3]:.3f}")
+m_dist = np.max(final_reg.dist())
+print(f"RMS: {final_reg.RMS():.4f}, max. distance: {m_dist:.4f}, iterations: {iterations}")
+print(f"Calculated params: {params[0]:.7f} {params[1]:.7f} {params[2]:.7f} {params[3]:.4f}")
 print(f"Filtered points {enz_plane.shape[0]} / {enz.shape[0]}")
 
-# rotate coords to plane
+if args.no_align:
+    exit()
+# align coordsys to plane
 norm = params[:3]
 if abs(norm[1]) < 0.9:  # non-parallel vector to norm
     t = np.array([0, 1, 0], float)
