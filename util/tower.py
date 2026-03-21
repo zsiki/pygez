@@ -130,11 +130,10 @@ for i, h in enumerate(args.elev):
                 geom = "Circle"
             text = f"{geom} section {h} m RMS={rms:.3f} {en.shape[0]}/{section.shape[0]}"
             ell_draw(aaxs[i], section[:,0], section[:,1], en[:,0], en[:,1],
-                     e0, n0, a, b, phi,
-                     f"Section {h} m\nRMS={rms:.3f} {en.shape[0]}/{section.shape[0]}")
+                     e0, n0, a, b, phi, text)
 if args.draw:
     plt.show()
-else:
+elif args.save_plot:
     plt.savefig(args.save_plot)
 
 if len(centers) > 2:
