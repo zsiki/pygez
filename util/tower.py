@@ -101,7 +101,8 @@ for i, h in enumerate(args.elev):
         else:
             reg = CircleReg(section[:,:2])
         r = Ransac(reg)
-        en, iterations = r.ransac_filter(tolerance=args.tol, iterations=args.iterations, w=args.percent)
+        en_fit, iterations = r.ransac_filter(tolerance=args.tol, iterations=args.iterations, w=args.percent)
+        en = reg.get_pnts_by_index(en_fit)
         if args.ellipse:
             reg = EllipseReg(en)
         else:
@@ -142,7 +143,8 @@ if len(centers) > 2:
     pars = np.array(pp)
     lr0 =Line3dReg(enz)
     r = Ransac(lr0)
-    enz_line, iterations = r.ransac_filter(tolerance=8*args.tol)
+    enz_fit, iterations = r.ransac_filter(tolerance=8*args.tol)
+    enz_line = lr0.get_pnts_by_index(enz_fit)
     lr = Line3dReg(enz_line)
     l3d = lr.lkn_reg()
     print(f"Axis line {enz_line.shape[0]}/{enz.shape[0]}/{iterations}")

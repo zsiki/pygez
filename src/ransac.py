@@ -33,7 +33,7 @@ class Ransac:
             :param iteration: iteration number for RANSAC
             :params p: probability for result
             :params w: percentage of inlier points
-            :returns: array of filtered points
+            :returns: array of filtered point's indexes and iteration number
 
             p and w are used if iteration is not given (None)
         """
@@ -46,7 +46,7 @@ class Ransac:
                 iterations = int(log(1 - p) / log(1 - w**n_geom) + 1) 
         indices = list(range(n))
         best = 0
-        best_enz = None
+        best_fit = None
         for _ in range(iterations):
             shuffle(indices)
             ind_n = indices[:n_geom]
@@ -59,7 +59,7 @@ class Ransac:
             n_fit = distances[fit].size
             if n_fit > best:
                 best = n_fit
-                best_enz = self.reg_obj.get_pnts_by_index(fit)
+                best_fit = fit
             if n_fit == n: # all points are on the geometry
                 break
-        return best_enz, iterations
+        return best_fit, iterations

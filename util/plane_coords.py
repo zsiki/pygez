@@ -46,7 +46,8 @@ except:
 reg = LinearReg(enz)
 # filter point with RANSAC
 r = Ransac(reg)
-enz_plane, iterations = r.ransac_filter(tolerance=args.tol, iterations=args.iterations)
+enz_fit, iterations = r.ransac_filter(tolerance=args.tol, iterations=args.iterations)
+enz_plane = reg.get_pnts_by_index(enz_fit)
 final_reg = LinearReg(enz_plane)
 params = final_reg.lkn_reg()
 m_dist = np.max(final_reg.dist())
