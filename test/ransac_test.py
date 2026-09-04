@@ -12,7 +12,7 @@ from  matplotlib import patches
 import numpy as np
 from ransac import Ransac
 from regression import (LinearReg, CircleReg, SphereReg, EllipseReg, Line3dReg,
-                        CylinderReg, ConeReg)
+                        CylinderReg, ConeReg, CustomError)
 
 DEFAULT_NUMP = 100
 DEFAULT_MAX = 1000  # coordinate range 0 - DEFAULT_MAX
@@ -276,7 +276,6 @@ if args.single_test in ('all', 'line3d'):
 
 if args.single_test in ('all', 'cylinder'):
     # Cylinder
-    #u0 = np.array([0.5, -0.2, 0.1])
     u0 = np.random.rand(3) - 0.5    # random axis direction
     u0 = u0 / np.linalg.norm(u0)
     base_center = np.random.rand(3) * 10 - 5
@@ -305,61 +304,66 @@ if args.single_test in ('all', 'cylinder'):
     enz += np.random.rand(*enz.shape) * noise / (3**0.5)   # add noise
     cr =CylinderReg(enz)
     r = Ransac(cr)
-    enz_fit, iterations = r.ransac_filter(tolerance=ransac_limit, iterations=iterations)
+    succ = False
+    for _ in range(5):
+        try:
+            enz_fit, iterations = r.ransac_filter(tolerance=ransac_limit, iterations=iterations)
+        except CustomError as e:
+            print(e)
+            continue
+        succ = True
+        break
+    if not succ:
+        print("RANSAC failed on cylinder")
+        exit()
     enz_cyl = cr.get_pnts_by_index(enz_fit)
     print("-" * 80)
     print("Cylinder")
     print(f"{enz_cyl.shape[0]}/{enz.shape[0]} points fit")
     print(f"Original   params: {param_0[0]:.3f} {param_0[1]:.3f} {param_0[2]:.3f} {param_0[3]:.3f} {param_0[4]:.3f} {param_0[5]:.3f} {param_0[6]:.3f}")
     print(f"Params after RANS: {cr.params[0]:.3f} {cr.params[1]:.3f} {cr.params[2]:.3f} {cr.params[3]:.3f} {cr.params[4]:.3f} {cr.params[5]:.3f} {cr.params[6]:.3f}")
+    print(f"RANSAC iterations: {iterations}")
     # calculate final params using preliminirary parameters from RANSAC
     cr1 = CylinderReg(enz_cyl, params0=cr.params[:7])
     params = cr1.lkn_reg(limits=True)
-    try:
-        params = cr1.lkn_reg(limits=True)
-    except ValueError as e:
-        print("*** CYLINDER FITTING FAILED ***")
-        print(e)
-        print(params.cost)
-        params = None
-    if params is not None:
-        print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
-        print(f"Limits           :{params[7]:.3f} {params[8]:.3f} {params[9]:.3f} - {params[0]:.3f} {params[1]:.3f} {params[2]:.3f}")
-        print(f"RMS: {cr1.RMS():.3f}, iterations: {iterations}")
-        if args.plot:
-            maxh = np.linalg.norm(params[:3] - params[7:])
-            heights = np.linspace(0, maxh, num=10)
-            angles = np.linspace(0, 2 * np.pi, num=16)
-            arbitrary = np.array([1.0, 0.0, 0.0])
-            if np.abs(np.dot(arbitrary, params[3:6])) > 0.9:
-                arbitrary = np.array([0.0, 1.0, 0.0])
-            v = np.cross(params[3:6], arbitrary)
-            v /= np.linalg.norm(v)
-            w = np.cross(params[3:6], v)
-            w /= np.linalg.norm(w)
-            axis_points = params[:3] + np.outer(heights, params[3:6])  # (N,3)
-            section = (np.cos(angles)[:,None] * radius * v) + \
-                      (np.sin(angles)[:,None] * radius * w)
-            xyz = axis_points[:,None,:] + section[None,:,:]
+    print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
+    print(f"Limits           :{params[7]:.3f} {params[8]:.3f} {params[9]:.3f} - {params[0]:.3f} {params[1]:.3f} {params[2]:.3f}")
+    print(f"RMS: {cr1.RMS():.3f}")
+    if args.plot:
+        maxh = np.linalg.norm(params[:3] - params[7:])
+        heights = np.linspace(0, maxh, num=10)
+        angles = np.linspace(0, 2 * np.pi, num=16)
+        arbitrary = np.array([1.0, 0.0, 0.0])
+        if np.abs(np.dot(arbitrary, params[3:6])) > 0.9:
+            arbitrary = np.array([0.0, 1.0, 0.0])
+        v = np.cross(params[3:6], arbitrary)
+        v /= np.linalg.norm(v)
+        w = np.cross(params[3:6], v)
+        w /= np.linalg.norm(w)
+        axis_points = params[:3] + np.outer(heights, params[3:6])  # (N,3)
+        section = (np.cos(angles)[:,None] * radius * v) + \
+                  (np.sin(angles)[:,None] * radius * w)
+        xyz = axis_points[:,None,:] + section[None,:,:]
 
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            # Plot the surface
-            ax.plot_wireframe(xyz[:,:,0], xyz[:,:,1], xyz[:,:,2], color='blue')
-            xx = [params[0], params[7]]
-            yy = [params[1], params[8]]
-            zz = [params[2], params[9]]
-            ax.plot(xx, yy, zz, c='blue')
-            ax.scatter(enz[:, 0], enz[:, 1], enz[:, 2], c='red', label='original points')
-            ax.scatter(enz_cyl[:, 0], enz_cyl[:, 1], enz_cyl[:, 2], c='green', label='filtered points')
-            ax.set_title(f"{enz_cyl.shape[0]}/{enz.shape[0]} points fit")
-            ax.view_init(32, 60)
-            ax.set_aspect('equal')
-            plt.show()
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        # Plot the surface
+        ax.plot_wireframe(xyz[:,:,0], xyz[:,:,1], xyz[:,:,2], color='blue')
+        xx = [params[0], params[7]]
+        yy = [params[1], params[8]]
+        zz = [params[2], params[9]]
+        ax.plot(xx, yy, zz, c='blue')
+        ax.scatter(enz[:, 0], enz[:, 1], enz[:, 2], c='red', label='original points')
+        ax.scatter(enz_cyl[:, 0], enz_cyl[:, 1], enz_cyl[:, 2], c='green', label='filtered points')
+        ax.set_title(f"{enz_cyl.shape[0]}/{enz.shape[0]} points fit")
+        ax.view_init(32, 60)
+        ax.set_aspect('equal')
+        plt.show()
 
 if args.single_test in ('all', 'cone'):
     # Cone
     height_max = 5
+    # vertical cone TODO
     param_0 = np.array([0, 0, height_max, 0, 0, 1, np.pi/6])
     apex = param_0[:3]
     u = param_0[3:6]
@@ -383,7 +387,18 @@ if args.single_test in ('all', 'cone'):
             (np.sin(angles)[:,None] * r[:,None] * w)
     cr =ConeReg(enz, param_0)
     r = Ransac(cr)
-    enz_fit, iterations = r.ransac_filter(tolerance=ransac_limit, iterations=iterations)
+    succ = False
+    for _ in range(5):
+        try:
+            enz_fit, iterations = r.ransac_filter(tolerance=ransac_limit, iterations=iterations)
+        except CustomError as e:
+            print(e)
+            continue
+        succ = True
+        break
+    if not succ:
+        print("RANSAC failed on cone")
+        exit()
     enz_cone = cr.get_pnts_by_index(enz_fit)
     print("-" * 80)
     print("Cone")

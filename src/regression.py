@@ -18,6 +18,13 @@ def sign(x):
     """ signum function """
     return  1 if x > 0 else -1 if x < 0 else 0
 
+class CustomError(Exception):
+    """Exception raised for custom error scenarios."""
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
 class BaseReg:
     """ Base class for regressions
         :param pnts: array of coordinates (n,2) or (n,3)
@@ -548,7 +555,7 @@ class CylinderReg(BaseReg):
         # save params even in unsuccessful case
         self._params = res.x
         if not res.success:
-            raise ValueError(res.message)
+            raise CustomError(f"*** Cylinder failed {res.message}")
         if limits:
             # find min/max points on axis
             t = np.dot(pnts_act - res.x[0:3], res.x[3:6])
@@ -563,6 +570,10 @@ def cone_dist(params, act) -> np.ndarray:
     p0 = params[0:3]
     v = params[3:6]
     alpha = params[6]
+    norm = np.linalg.norm(v)
+    if norm < 1e-12:    # disapearing direction
+        return np.full(len(act), 1e10)
+    v = v / norm
     # Vector from apex to each point
     w = act - p0
     # Projection onto axis
@@ -580,14 +591,9 @@ class ConeReg(BaseReg):
 
         :param pnts: array of coordinates (n,3)
     """
-    def __init__(self, pnts:np.ndarray, params0=None, ftol=2.3e-16,
-                 gtol=2.3e-16, xtol=2.3e-16, loss='linear'):
+    def __init__(self, pnts:np.ndarray, params0=None):
         """ """
         super().__init__(pnts)
-        self._ftol = ftol
-        self._gtol = gtol
-        self._xtol = xtol
-        self._loss = loss
         self._params0 = params0
         self._params = None
 
@@ -643,21 +649,15 @@ class ConeReg(BaseReg):
         else:
             params0 = self._params0
         # Optimize
-        res = least_squares(cone_dist, params0, args=(pnts_act,),
-                            ftol=self._ftol, gtol=self._gtol, xtol=self._xtol,
-                            loss=self._loss)
-        if not res.success:
-            raise ValueError(res.message)
-        self._params = res.x
+        res = least_squares(cone_dist, params0, args=(pnts_act,))
         # normalize direction
-        self._params[3:6] = np.linalg.norm(self._params[3:6])
+        res.x[3:6] = res.x[3:6] / np.linalg.norm(res.x[3:6])
+        self._params = res.x
+        if not res.success:
+            raise CustomError(f"*** Cone failed {res.message}")
         if limits:
-            # find min/max points on axis
-            t = np.dot(pnts_act - res.x[0:3], res.x[3:6])
-            p_min = res.x[0:3] - np.min(t) * res.x[3:6]
-            p_max = res.x[0:3] - np.max(t) * res.x[3:6]
-            self._params = np.r_[res.x, p_min, p_max]
-
+            # TODO
+            pass
         return self._params.copy()
 
     @property
