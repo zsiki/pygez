@@ -475,6 +475,10 @@ def cyl_dist(params, act) -> np.ndarray:
     v = params[3:6]
     r = params[6]
 
+    norm = np.linalg.norm(v)
+    if norm < 1e-12:    # disapearing direction
+        return np.full(len(act), 1e10)
+    v = v / norm
     diff = act - p0  # vector from p0 to each point
     # project diff onto v
     proj_len = diff @ v
@@ -494,14 +498,9 @@ class CylinderReg(BaseReg):
 
         :param pnts: array of coordinates (n,3)
     """
-    def __init__(self, pnts:np.ndarray, params0=None,
-                 ftol=2.3e-16, gtol=2.3e-16, xtol=2.3e-16, loss='linear'):
+    def __init__(self, pnts:np.ndarray, params0=None):
         """ """
         super().__init__(pnts)
-        self._ftol = ftol
-        self._gtol = gtol
-        self._xtol = xtol
-        self._loss = loss
         self._params0 = params0
         self._params = None
 
@@ -543,9 +542,7 @@ class CylinderReg(BaseReg):
         else:
             params0 = self._params0
         # Least-squares optimization
-        res = least_squares(cyl_dist, params0, args=(pnts_act,),
-                            ftol=self._ftol, gtol=self._gtol, xtol=self._xtol,
-                            loss=self._loss)
+        res = least_squares(cyl_dist, params0, args=(pnts_act,))
         # normalize direction
         res.x[3:6] = res.x[3:6] / np.linalg.norm(res.x[3:6])
         # save params even in unsuccessful case
@@ -650,7 +647,7 @@ class ConeReg(BaseReg):
                             ftol=self._ftol, gtol=self._gtol, xtol=self._xtol,
                             loss=self._loss)
         if not res.success:
-            raise ValueError("Cone fitting failed")
+            raise ValueError(res.message)
         self._params = res.x
         # normalize direction
         self._params[3:6] = np.linalg.norm(self._params[3:6])

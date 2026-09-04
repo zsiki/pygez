@@ -3,7 +3,7 @@
     2D linei, 2D circle, ellipse, 3D line, 3D plane, sphere, cylinder, cone
 
     NOTE:
-    cylinder and cone needs improvement
+    cone needs improvement
 """
 
 import argparse
@@ -277,11 +277,11 @@ if args.single_test in ('all', 'line3d'):
 if args.single_test in ('all', 'cylinder'):
     # Cylinder
     #u0 = np.array([0.5, -0.2, 0.1])
-    u0 = np.random.rand(3) - 0.5    # axis direction
+    u0 = np.random.rand(3) - 0.5    # random axis direction
     u0 = u0 / np.linalg.norm(u0)
-    param_0 = np.array([0.0, 0.0, 0.0, u0[0], u0[1], u0[2], 2.0])
-    base_center = param_0[:3]
-    radius = param_0[6]
+    base_center = np.random.rand(3) * 10 - 5
+    radius = np.random.rand(1)[0] + 2.0
+    param_0 = np.array([base_center[0], base_center[1], base_center[2], u0[0], u0[1], u0[2], radius])
     # Heights and angles
     height_max = 5
     heights = np.random.uniform(-height_max, height_max, n_p)
@@ -314,11 +314,13 @@ if args.single_test in ('all', 'cylinder'):
     print(f"Params after RANS: {cr.params[0]:.3f} {cr.params[1]:.3f} {cr.params[2]:.3f} {cr.params[3]:.3f} {cr.params[4]:.3f} {cr.params[5]:.3f} {cr.params[6]:.3f}")
     # calculate final params using preliminirary parameters from RANSAC
     cr1 = CylinderReg(enz_cyl, params0=cr.params[:7])
+    params = cr1.lkn_reg(limits=True)
     try:
         params = cr1.lkn_reg(limits=True)
     except ValueError as e:
         print("*** CYLINDER FITTING FAILED ***")
         print(e)
+        print(params.cost)
         params = None
     if params is not None:
         print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
