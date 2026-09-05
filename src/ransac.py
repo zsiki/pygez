@@ -52,7 +52,7 @@ class Ransac:
             ind_n = indices[:n_geom]
             try:
                 self.reg_obj.lkn_reg(ind_n, limits=False)
-            except ValueError:
+            except:
                 continue
             distances = self.reg_obj.dist()
             fit = distances < tolerance
