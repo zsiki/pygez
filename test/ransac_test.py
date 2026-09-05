@@ -370,8 +370,12 @@ if args.single_test in ('all', 'cone'):
     u = u / np.linalg.norm(u)
     alpha = param_0[6]
     heights = np.random.rand(n_p) * height_max
-    axis_points = apex - np.outer(heights, u)  # (N,3)
     angles = np.random.rand(n_p) * 2 * np.pi
+    axis_points = np.outer(heights, u) # - apex  # (N,3)    # TODO only for vertical cone!
+    # REGULAR POINTS
+    #heights = np.array(list(np.linspace(0, height_max, 6, True)) * 4)
+    #angles = np.array([0] * 6 + [np.pi / 2] * 6 + [np.pi] * 6 + [3*np.pi/2] * 6)
+    #axis_points = apex - np.outer(heights, u)  # (N,3)
     r = np.abs(height_max - heights) * np.tan(alpha)
     # build orthonormal basis (u,v,w) with u=u0
     # pick an arbitrary vector not parallel to u:
@@ -385,6 +389,7 @@ if args.single_test in ('all', 'cone'):
 
     enz = axis_points + (np.cos(angles)[:,None] * r[:,None] * v) + \
             (np.sin(angles)[:,None] * r[:,None] * w)
+    enz += np.random.rand(*enz.shape) * noise / (3**0.5)   # add noise
     cr =ConeReg(enz, param_0)
     r = Ransac(cr)
     succ = False
@@ -407,46 +412,41 @@ if args.single_test in ('all', 'cone'):
     print(f"Params after RANS: {cr.params[0]:.3f} {cr.params[1]:.3f} {cr.params[2]:.3f} {cr.params[3]:.3f} {cr.params[4]:.3f} {cr.params[5]:.3f} {cr.params[6]:.3f}")
     # calculate final params using preliminirary parameters from RANSAC
     enz1 = ConeReg(enz_cone, params0=cr.params[:7])
-    try:
-        params = enz1.lkn_reg()
-    except ValueError as e:
-        print("*** CONE FITTING FAILED ***")
-        print(e)
-        params = None
-    if params:
-        print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
-        print(f"Limits           : {params[7]:.3f} {params[8]:.3f} {params[9]:.3f} - {params[10]:.3f} {params[11]:.3f} {params[12]:.3f}")
-        print(f"RMS: {enz1.RMS():.3f}, iterations: {iterations}")
-        if args.plot:
-            maxh = np.linalg.norm(params[:3] - params[7:10])    # height from apex
-            maxh1 = np.linalg.norm(params[10:13] - params[7:10])    # real height range
-            offset = maxh - maxh1
-            heights = np.linspace(0, maxh1, num=10)
-            angles = np.linspace(0, 2 * np.pi, num=16)
-            arbitrary = np.array([1.0, 0.0, 0.0])
-            if np.abs(np.dot(arbitrary, params[3:6])) > 0.9:
-                arbitrary = np.array([0.0, 1.0, 0.0])
-            v = np.cross(params[3:6], arbitrary)
-            v /= np.linalg.norm(v)
-            w = np.cross(params[3:6], v)
-            w /= np.linalg.norm(w)
-            axis_points = params[:3] - np.outer(heights+offset, params[3:6])  # (N,3)
-            radius = (heights+offset) * np.tan(params[6])
-            section = (np.cos(angles)[:,None] * radius[:,None] * v) + \
-                    (np.sin(angles)[:,None] * radius[:,None] * w)
-            xyz = axis_points[:,None,:] + section[None,:,:]
-
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            # Plot the surface
-            ax.plot_wireframe(xyz[:,:,0], xyz[:,:,1], xyz[:,:,2], color='blue')
-            xx = [params[0], params[7]]
-            yy = [params[1], params[8]]
-            zz = [params[2], params[9]]
-            ax.plot(xx, yy, zz, c='blue')
-            ax.scatter(enz[:, 0], enz[:, 1], enz[:, 2], c='red', label='original points')
-            ax.scatter(enz_cyl[:, 0], enz_cyl[:, 1], enz_cyl[:, 2], c='green', label='filtered points')
-            ax.set_title(f"{enz_cone.shape[0]}/{enz.shape[0]} points fit")
-            ax.view_init(32, 60)
-            ax.set_aspect('equal')
-            plt.show()
+    params = enz1.lkn_reg()
+    print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
+    #print(f"Limits           : {params[7]:.3f} {params[8]:.3f} {params[9]:.3f} - {params[10]:.3f} {params[11]:.3f} {params[12]:.3f}") # TODO
+    print(f"RMS: {enz1.RMS():.3f}, iterations: {iterations}")
+    if args.plot:
+        #maxh = np.linalg.norm(params[:3] - params[7:10])    # height from apex
+        #maxh1 = np.linalg.norm(params[10:13] - params[7:10])    # real height range
+        maxh1 = height_max
+        #offset = maxh - maxh1
+        offset = 0
+        heights = np.linspace(0, maxh1, num=10)
+        angles = np.linspace(0, 2 * np.pi, num=10)
+        arbitrary = np.array([1.0, 0.0, 0.0])
+        if np.abs(np.dot(arbitrary, params[3:6])) > 0.9:
+            arbitrary = np.array([0.0, 1.0, 0.0])
+        v = np.cross(params[3:6], arbitrary)
+        v /= np.linalg.norm(v)
+        w = np.cross(params[3:6], v)
+        w /= np.linalg.norm(w)
+        axis_points = params[:3] - np.outer(heights+offset, params[3:6])  # (N,3)
+        radius = (heights+offset) * np.tan(params[6])
+        section = (np.cos(angles)[:,None] * radius[:,None] * v) + \
+                (np.sin(angles)[:,None] * radius[:,None] * w)
+        xyz = axis_points[:,None,:] + section[None,:,:]
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        # Plot the surface
+        ax.plot_wireframe(xyz[:,:,0], xyz[:,:,1], xyz[:,:,2], color='blue')
+        xx = [params[0], params[0] - height_max * params[3]]
+        yy = [params[1], params[1] - height_max * params[4]]
+        zz = [params[2], params[2] - height_max * params[5]]
+        ax.plot(xx, yy, zz, c='blue')
+        ax.scatter(enz[:, 0], enz[:, 1], enz[:, 2], c='red', label='original points')
+        ax.scatter(enz_cone[:, 0], enz_cone[:, 1], enz_cone[:, 2], c='green', label='filtered points')
+        ax.set_title(f"{enz_cone.shape[0]}/{enz.shape[0]} points fit")
+        ax.view_init(32, 60)
+        ax.set_aspect('equal')
+        plt.show()
