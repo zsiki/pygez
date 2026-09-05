@@ -279,10 +279,10 @@ if args.single_test in ('all', 'cylinder'):
     u0 = np.random.rand(3) - 0.5    # random axis direction
     u0 = u0 / np.linalg.norm(u0)
     base_center = np.random.rand(3) * 10 - 5
-    radius = np.random.rand(1)[0] + 2.0
+    radius = np.random.rand(1)[0] * DEFAULT_MAX / 3
     param_0 = np.array([base_center[0], base_center[1], base_center[2], u0[0], u0[1], u0[2], radius])
     # Heights and angles
-    height_max = 5
+    height_max = DEFAULT_MAX
     heights = np.random.uniform(-height_max, height_max, n_p)
     angles = np.random.uniform(0, 2 * np.pi, n_p)
 
@@ -340,7 +340,7 @@ if args.single_test in ('all', 'cylinder'):
         v /= np.linalg.norm(v)
         w = np.cross(params[3:6], v)
         w /= np.linalg.norm(w)
-        axis_points = params[:3] + np.outer(heights, params[3:6])  # (N,3)
+        axis_points = params[:3] - np.outer(heights, params[3:6])  # (N,3)
         section = (np.cos(angles)[:,None] * radius * v) + \
                   (np.sin(angles)[:,None] * radius * w)
         xyz = axis_points[:,None,:] + section[None,:,:]
@@ -362,13 +362,13 @@ if args.single_test in ('all', 'cylinder'):
 
 if args.single_test in ('all', 'cone'):
     # Cone
-    height_max = 5
+    height_max = DEFAULT_MAX
+    alpha = np.pi/6 * (1 + np.random.rand(1)[0])
     # vertical cone TODO
-    param_0 = np.array([0, 0, height_max, 0, 0, 1, np.pi/6])
+    param_0 = np.array([0, 0, height_max, 0, 0, 1, alpha])
     apex = param_0[:3]
     u = param_0[3:6]
     u = u / np.linalg.norm(u)
-    alpha = param_0[6]
     heights = np.random.rand(n_p) * height_max
     angles = np.random.rand(n_p) * 2 * np.pi
     axis_points = np.outer(heights, u) # - apex  # (N,3)    # TODO only for vertical cone!
@@ -432,14 +432,17 @@ if args.single_test in ('all', 'cone'):
         w = np.cross(params[3:6], v)
         w /= np.linalg.norm(w)
         axis_points = params[:3] - np.outer(heights+offset, params[3:6])  # (N,3)
-        radius = (heights+offset) * np.tan(params[6])
-        section = (np.cos(angles)[:,None] * radius[:,None] * v) + \
-                (np.sin(angles)[:,None] * radius[:,None] * w)
-        xyz = axis_points[:,None,:] + section[None,:,:]
+        radius = np.flip(np.abs(height_max - heights) * np.tan(params[6]))
+        rings = []
+        for i in range(len(axis_points)):
+            ring = axis_points[i][:,None] + radius[i] * \
+                   (v[:,None] * np.cos(angles) + w[:,None] * np.sin(angles))
+            rings.append(ring)
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         # Plot the surface
-        ax.plot_wireframe(xyz[:,:,0], xyz[:,:,1], xyz[:,:,2], color='blue')
+        for ring in rings:
+            ax.plot(ring[0], ring[1], ring[2], c='blue')
         xx = [params[0], params[0] - height_max * params[3]]
         yy = [params[1], params[1] - height_max * params[4]]
         zz = [params[2], params[2] - height_max * params[5]]
