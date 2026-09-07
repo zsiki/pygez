@@ -656,8 +656,11 @@ class ConeReg(BaseReg):
         if not res.success:
             raise CustomError(f"*** Cone failed {res.message}")
         if limits:
-            # TODO
-            pass
+            # find min/max points on axis
+            t = np.dot(pnts_act - res.x[0:3], res.x[3:6])
+            p_min = res.x[0:3] + np.min(t) * res.x[3:6]
+            p_max = res.x[0:3] + np.max(t) * res.x[3:6]
+            self._params = np.r_[res.x, p_min, p_max]
         return self._params.copy()
 
     @property
