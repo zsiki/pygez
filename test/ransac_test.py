@@ -33,7 +33,7 @@ parser.add_argument('-l', '--limit', type=float, default=DEFAULT_LIMIT,
                     help=f'Distance limit for RANSAC filter, default: {DEFAULT_LIMIT}')
 parser.add_argument('-i', '--iterations', type=int, default=DEFAULT_ITER,
                     help='Number of RANSAC iterations, default: None')
-parser.add_argument('--single_test', choices=['line2d', 'plane', 'circle', 'sphere', 'ellipse', 'line3d', 'cylinder', 'cone', 'all'], default='all',
+parser.add_argument('-t', '--single_test', choices=['line2d', 'plane', 'circle', 'sphere', 'ellipse', 'line3d', 'cylinder', 'cone', 'all'], default='all',
                     help='Select single test case or all, default: all')
 parser.add_argument('-p', '--plot', action='store_true',
                     help='Plot points')
@@ -363,20 +363,15 @@ if args.single_test in ('all', 'cylinder'):
 if args.single_test in ('all', 'cone'):
     # Cone
     height_max = DEFAULT_MAX
-    alpha = np.pi/6 * (1 + np.random.rand(1)[0])
-    # vertical cone TODO
-    param_0 = np.array([0, 0, height_max, 0, 0, 1, alpha])
-    apex = param_0[:3]
-    u = param_0[3:6]
+    alpha = np.pi/6 * (0.5 + np.random.rand(1)[0])  # half angle at apex
+    apex = np.array([0, 0, height_max])
+    u = np.random.rand(3)   # random direction for axis
     u = u / np.linalg.norm(u)
+    param_0 = np.array([apex[0], apex[1], apex[2], u[0], u[1], u[2], alpha])
     heights = np.random.rand(n_p) * height_max
     angles = np.random.rand(n_p) * 2 * np.pi
-    axis_points = np.outer(heights, u) # - apex  # (N,3)    # TODO only for vertical cone!
-    # REGULAR POINTS
-    #heights = np.array(list(np.linspace(0, height_max, 6, True)) * 4)
-    #angles = np.array([0] * 6 + [np.pi / 2] * 6 + [np.pi] * 6 + [3*np.pi/2] * 6)
-    #axis_points = apex - np.outer(heights, u)  # (N,3)
-    r = np.abs(height_max - heights) * np.tan(alpha)
+    axis_points = apex - np.outer(heights, u)
+    r = heights * np.tan(alpha)
     # build orthonormal basis (u,v,w) with u=u0
     # pick an arbitrary vector not parallel to u:
     arbitrary = np.array([1.0, 0.0, 0.0])
@@ -412,27 +407,31 @@ if args.single_test in ('all', 'cone'):
     print(f"Params after RANS: {cr.params[0]:.3f} {cr.params[1]:.3f} {cr.params[2]:.3f} {cr.params[3]:.3f} {cr.params[4]:.3f} {cr.params[5]:.3f} {cr.params[6]:.3f}")
     # calculate final params using preliminirary parameters from RANSAC
     enz1 = ConeReg(enz_cone, params0=cr.params[:7])
-    params = enz1.lkn_reg()
+    params = enz1.lkn_reg(limits=True)
     print(f"Calculated params: {params[0]:.3f} {params[1]:.3f} {params[2]:.3f} {params[3]:.3f} {params[4]:.3f} {params[5]:.3f} {params[6]:.3f}")
-    #print(f"Limits           : {params[7]:.3f} {params[8]:.3f} {params[9]:.3f} - {params[10]:.3f} {params[11]:.3f} {params[12]:.3f}") # TODO
+    print(f"Limits           : {params[7]:.3f} {params[8]:.3f} {params[9]:.3f} - {params[10]:.3f} {params[11]:.3f} {params[12]:.3f}")
     print(f"RMS: {enz1.RMS():.3f}, iterations: {iterations}")
     if args.plot:
-        #maxh = np.linalg.norm(params[:3] - params[7:10])    # height from apex
-        #maxh1 = np.linalg.norm(params[10:13] - params[7:10])    # real height range
-        maxh1 = height_max
-        #offset = maxh - maxh1
-        offset = 0
+        d1 = np.linalg.norm(params[:3] - params[7:10])
+        d2 = np.linalg.norm(params[:3] - params[10:13])
+        if d1 > d2:
+            maxh1 = d1
+            direction = params[:3] - params[7:10]
+        else:
+            maxh1 = d2
+            direction = params[:3] - params[10:13]
+        direction /= np.linalg.norm(direction)
         heights = np.linspace(0, maxh1, num=10)
         angles = np.linspace(0, 2 * np.pi, num=10)
         arbitrary = np.array([1.0, 0.0, 0.0])
-        if np.abs(np.dot(arbitrary, params[3:6])) > 0.9:
+        if np.abs(np.dot(arbitrary, direction)) > 0.9:
             arbitrary = np.array([0.0, 1.0, 0.0])
-        v = np.cross(params[3:6], arbitrary)
+        v = np.cross(direction, arbitrary)
         v /= np.linalg.norm(v)
         w = np.cross(params[3:6], v)
         w /= np.linalg.norm(w)
-        axis_points = params[:3] - np.outer(heights+offset, params[3:6])  # (N,3)
-        radius = np.flip(np.abs(height_max - heights) * np.tan(params[6]))
+        axis_points = params[:3] - np.outer(heights, direction)  # (N,3)
+        radius = np.abs(heights) * np.tan(params[6])
         rings = []
         for i in range(len(axis_points)):
             ring = axis_points[i][:,None] + radius[i] * \
@@ -443,9 +442,11 @@ if args.single_test in ('all', 'cone'):
         # Plot the surface
         for ring in rings:
             ax.plot(ring[0], ring[1], ring[2], c='blue')
-        xx = [params[0], params[0] - height_max * params[3]]
-        yy = [params[1], params[1] - height_max * params[4]]
-        zz = [params[2], params[2] - height_max * params[5]]
+        for p in rings[-1].T:
+            ax.plot([p[0], params[0]], [p[1], params[1]], [p[2], params[2]], c="blue")
+        xx = [params[7], params[10]]    # axis from limits
+        yy = [params[8], params[11]]
+        zz = [params[9], params[12]]
         ax.plot(xx, yy, zz, c='blue')
         ax.scatter(enz[:, 0], enz[:, 1], enz[:, 2], c='red', label='original points')
         ax.scatter(enz_cone[:, 0], enz_cone[:, 1], enz_cone[:, 2], c='green', label='filtered points')
